@@ -2,6 +2,8 @@
 
 A client-side, privacy-first PDF utility suite built with React 19, Vite, Tailwind CSS v4, `pdf-lib`, and `pdfjs-dist`. 100% of processing happens directly in the browser—no files or personal data are ever sent to any external server.
 
+🌐 **Live Demo**: [https://kheirparham-eng.github.io/PDF-tools](https://kheirparham-eng.github.io/PDF-tools)
+
 ---
 
 ## 🚀 Features
@@ -26,8 +28,8 @@ A client-side, privacy-first PDF utility suite built with React 19, Vite, Tailwi
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
-   cd YOUR_REPOSITORY
+   git clone https://github.com/kheirparham-eng/PDF-tools.git
+   cd PDF-tools
    ```
 
 2. **Install Dependencies**
@@ -39,7 +41,7 @@ A client-side, privacy-first PDF utility suite built with React 19, Vite, Tailwi
    ```bash
    npm run dev
    ```
-   Open your browser and navigate to `http://localhost:3000` (or the URL outputted in your terminal, e.g. `http://localhost:5173`).
+   Open your browser and navigate to `http://localhost:3000` (or `http://localhost:5173`).
 
 4. **Build for Production**
    ```bash
@@ -56,24 +58,28 @@ A client-side, privacy-first PDF utility suite built with React 19, Vite, Tailwi
 
 ## 🌐 How to Host on GitHub Pages
 
-This project is configured with a automated GitHub Actions workflow (`.github/workflows/deploy.yml`).
+This project includes a pre-configured GitHub Actions deployment workflow (`.github/workflows/deploy.yml`).
 
-### Steps to Enable GitHub Pages:
+### Step-by-step Setup on GitHub:
 
-1. Push your repository code to GitHub on the `main` or `master` branch:
+1. **Commit and push all recent changes to GitHub**:
    ```bash
    git add .
-   git commit -m "Configure for GitHub Pages hosting"
+   git commit -m "Add GitHub Pages workflow and updated configuration"
    git push origin main
    ```
 
-2. Open your GitHub Repository in your browser.
-3. Go to **Settings** → **Pages** (under Code and automation in the left sidebar).
-4. Under **Build and deployment**:
-   - Change **Source** from *Deploy from a branch* to **GitHub Actions**.
-5. Go to the **Actions** tab at the top of your repository to watch the deployment workflow run.
-6. Once completed, your site will be live at:
-   `https://YOUR_USERNAME.github.io/YOUR_REPOSITORY/`
+2. **Enable GitHub Actions for Pages**:
+   - Navigate to your repository: [https://github.com/kheirparham-eng/PDF-tools](https://github.com/kheirparham-eng/PDF-tools)
+   - Click on **Settings** tab at the top.
+   - In the left sidebar under *Code and automation*, click **Pages**.
+   - Under **Build and deployment** → **Source**, select **GitHub Actions** from the dropdown menu (instead of "Deploy from a branch").
+
+3. **Automatic Deployment**:
+   - Click on the **Actions** tab at the top of the repository.
+   - You will see the **Deploy to GitHub Pages** workflow running automatically.
+   - Once the workflow turns green, your site will be live at:  
+     👉 **[https://kheirparham-eng.github.io/PDF-tools/](https://kheirparham-eng.github.io/PDF-tools/)**
 
 ---
 

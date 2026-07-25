@@ -1,6 +1,7 @@
 {
-  "name": "react-example",
+  "name": "pdf-tools",
   "private": true,
+  "homepage": "https://kheirparham-eng.github.io/PDF-tools",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
