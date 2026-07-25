@@ -1,0 +1,158 @@
+@import "tailwindcss";
+
+@layer utilities {
+  /* Liquid Floating Ambient Blobs */
+  @keyframes liquid-float-1 {
+    0%, 100% {
+      transform: translate(0px, 0px) scale(1);
+    }
+    33% {
+      transform: translate(40px, -60px) scale(1.1);
+    }
+    66% {
+      transform: translate(-30px, 30px) scale(0.95);
+    }
+  }
+
+  @keyframes liquid-float-2 {
+    0%, 100% {
+      transform: translate(0px, 0px) scale(1);
+    }
+    33% {
+      transform: translate(-50px, 50px) scale(1.08);
+    }
+    66% {
+      transform: translate(40px, -40px) scale(0.92);
+    }
+  }
+
+  @keyframes liquid-float-3 {
+    0%, 100% {
+      transform: translate(0px, 0px) scale(1);
+    }
+    50% {
+      transform: translate(30px, 40px) scale(1.15);
+    }
+  }
+
+  @keyframes shimmer-sweep {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(200%);
+    }
+  }
+
+  .animate-liquid-1 {
+    animation: liquid-float-1 18s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  .animate-liquid-2 {
+    animation: liquid-float-2 22s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  .animate-liquid-3 {
+    animation: liquid-float-3 26s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  /* Liquid Glass Panels & Containers */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), inset 0 1px 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  .dark .glass-card {
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.35), inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .glass-nav {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 25px rgba(31, 38, 135, 0.05);
+  }
+
+  .dark .glass-nav {
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.4);
+  }
+
+  .glass-pill {
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.6);
+  }
+
+  .dark .glass-pill {
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  }
+
+  .glass-input {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+
+  .dark .glass-input {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .glass-btn-primary {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.95), rgba(139, 92, 246, 0.95));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.5);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-btn-primary:hover {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.98), rgba(124, 58, 237, 0.98));
+    box-shadow: 0 12px 32px rgba(99, 102, 241, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.8);
+    transform: translateY(-1px);
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.7);
+}
+

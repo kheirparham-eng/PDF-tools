@@ -1,0 +1,6 @@
+{
+  "name": "PDF Utility Tool",
+  "description": "Browser-based client-side PDF suite with Liquid Glass UI to merge, split, compress, convert to grayscale, convert to images, and reorder PDF pages 100% locally.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
