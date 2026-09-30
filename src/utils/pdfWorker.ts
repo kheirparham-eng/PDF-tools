@@ -1,17 +1,14 @@
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Configure the worker for pdfjs-dist
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions) {
   try {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/build/pdf.worker.min.mjs',
-      import.meta.url
-    ).toString();
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(pdfWorkerUrl, window.location.href).href;
   } catch {
-    const version = pdfjsLib.version || '4.10.38';
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
   }
 }
 
 export { pdfjsLib };
+
 

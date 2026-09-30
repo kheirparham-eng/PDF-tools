@@ -89,7 +89,8 @@ export const SplitTool: React.FC<SplitToolProps> = ({ onProcessingChange, addToa
         pageNumber: i + 1,
         rotation: 0,
         selected: true,
-        aspectRatio: 0.75
+        aspectRatio: 0.75,
+        thumbnailUrl: i === 0 ? info.thumbnailUrl : undefined
       }));
 
       setPages(newPages);

@@ -87,7 +87,8 @@ export const PageReorderTool: React.FC<PageReorderToolProps> = ({
         id: `page-${i}-${Date.now()}`,
         originalIndex: i,
         pageNumber: i + 1,
-        rotation: 0
+        rotation: 0,
+        thumbnailUrl: i === 0 ? info.thumbnailUrl : undefined
       }));
 
       setPages(initialPages);

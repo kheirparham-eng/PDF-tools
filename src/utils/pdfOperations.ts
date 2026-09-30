@@ -93,7 +93,32 @@ export function parsePageRanges(rangeStr: string, totalPages: number): number[] 
 }
 
 /**
- * Get basic info and 1st page thumbnail for an uploaded PDF without cloning ArrayBuffer
+ * Safe document loader helper for pdfjs-dist.
+ * Always clones the buffer slice so pdfjs Web Worker postMessage
+ * never detaches the original ArrayBuffer in the caller thread.
+ * Configures CMaps and standard font directories for international character support.
+ */
+export function getPdfjsDocument(
+  source: ArrayBuffer | Uint8Array,
+  extraOptions?: Record<string, any>
+) {
+  const bufferSlice =
+    source instanceof ArrayBuffer
+      ? source.slice(0)
+      : source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
+
+  return pdfjsLib.getDocument({
+    data: new Uint8Array(bufferSlice),
+    stopAtErrors: false,
+    cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '6.1.200'}/cmaps/`,
+    cMapPacked: true,
+    standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '6.1.200'}/standard_fonts/`,
+    ...extraOptions
+  });
+}
+
+/**
+ * Get basic info and 1st page thumbnail for an uploaded PDF without detaching ArrayBuffer
  */
 export async function getPDFInfo(arrayBuffer: ArrayBuffer): Promise<{ pageCount: number; thumbnailUrl: string }> {
   let pdfDoc: any = null;
@@ -101,10 +126,7 @@ export async function getPDFInfo(arrayBuffer: ArrayBuffer): Promise<{ pageCount:
   const canvas = document.createElement('canvas');
 
   try {
-    const loadingTask = pdfjsLib.getDocument({
-      data: new Uint8Array(arrayBuffer),
-      stopAtErrors: false
-    });
+    const loadingTask = getPdfjsDocument(arrayBuffer);
     pdfDoc = await loadingTask.promise;
     const pageCount = pdfDoc.numPages;
 
@@ -119,18 +141,18 @@ export async function getPDFInfo(arrayBuffer: ArrayBuffer): Promise<{ pageCount:
     if (context) {
       await page.render({
         canvasContext: context,
-        viewport: viewport,
-        canvas: canvas
+        viewport: viewport
       }).promise;
     }
 
     const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.75);
     return { pageCount, thumbnailUrl };
   } catch (error: any) {
+    console.error('Failed to get PDF info:', error);
     if (error?.name === 'PasswordException') {
       throw new Error('This PDF is password protected or encrypted. Please unlock it before processing.');
     }
-    throw new Error('Failed to read PDF file. The document may be corrupted or invalid.');
+    throw new Error(error?.message || 'Failed to read PDF file. The document may be corrupted or invalid.');
   } finally {
     // Explicitly release memory
     if (page) {
@@ -157,10 +179,7 @@ export async function renderPageThumbnail(
   const canvas = document.createElement('canvas');
 
   try {
-    const loadingTask = pdfjsLib.getDocument({
-      data: new Uint8Array(arrayBuffer),
-      stopAtErrors: false
-    });
+    const loadingTask = getPdfjsDocument(arrayBuffer);
     pdfDoc = await loadingTask.promise;
     page = await pdfDoc.getPage(pageIndex + 1);
 
@@ -172,8 +191,7 @@ export async function renderPageThumbnail(
     if (context) {
       await page.render({
         canvasContext: context,
-        viewport: viewport,
-        canvas: canvas
+        viewport: viewport
       }).promise;
     }
 
@@ -214,10 +232,7 @@ export async function renderBatchThumbnails(
   const quality = options?.quality ?? 0.72;
 
   try {
-    const loadingTask = pdfjsLib.getDocument({
-      data: new Uint8Array(arrayBuffer),
-      stopAtErrors: false
-    });
+    const loadingTask = getPdfjsDocument(arrayBuffer);
     pdfDoc = await loadingTask.promise;
 
     for (let i = 0; i < pageIndices.length; i++) {
@@ -238,8 +253,7 @@ export async function renderBatchThumbnails(
         if (context) {
           await page.render({
             canvasContext: context,
-            viewport: viewport,
-            canvas: canvas
+            viewport: viewport
           }).promise;
 
           const dataUrl = canvas.toDataURL('image/jpeg', quality);
@@ -458,10 +472,7 @@ export async function convertPDFToImages(
   const context = canvas.getContext('2d', { willReadFrequently: false });
 
   try {
-    const loadingTask = pdfjsLib.getDocument({
-      data: new Uint8Array(arrayBuffer),
-      stopAtErrors: false
-    });
+    const loadingTask = getPdfjsDocument(arrayBuffer);
     pdfDoc = await loadingTask.promise;
     const baseName = originalFilename.replace(/\.pdf$/i, '');
     const total = selectedPageIndices.length;
@@ -687,10 +698,7 @@ export async function convertToGrayscalePDF(
   const context = canvas.getContext('2d', { willReadFrequently: true });
 
   try {
-    const loadingTask = pdfjsLib.getDocument({
-      data: new Uint8Array(arrayBuffer),
-      stopAtErrors: false
-    });
+    const loadingTask = getPdfjsDocument(arrayBuffer);
     pdfDoc = await loadingTask.promise;
     const numPages = pdfDoc.numPages;
 
@@ -806,10 +814,7 @@ export async function compressPDF(
   const context = canvas.getContext('2d', { willReadFrequently: false });
 
   try {
-    const loadingTask = pdfjsLib.getDocument({
-      data: new Uint8Array(arrayBuffer),
-      stopAtErrors: false
-    });
+    const loadingTask = getPdfjsDocument(arrayBuffer);
     pdfDoc = await loadingTask.promise;
     const numPages = pdfDoc.numPages;
 
