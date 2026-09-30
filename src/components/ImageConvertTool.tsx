@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Image as ImageIcon,
   Download,
@@ -36,6 +36,22 @@ export const ImageConvertTool: React.FC<ImageConvertToolProps> = ({
   const [convertedImages, setConvertedImages] = useState<Array<{ pageNumber: number; dataUrl: string; blob: Blob; filename: string }> | null>(null);
   const [zipBlob, setZipBlob] = useState<Blob | null>(null);
 
+  // Keep track of active object URLs to revoke them when no longer needed
+  const activeUrlsRef = useRef<string[]>([]);
+
+  const revokeActiveUrls = () => {
+    activeUrlsRef.current.forEach((url) => {
+      try { URL.revokeObjectURL(url); } catch { /* ignore */ }
+    });
+    activeUrlsRef.current = [];
+  };
+
+  useEffect(() => {
+    return () => {
+      revokeActiveUrls();
+    };
+  }, []);
+
   const handleFileSelected = async (selectedFiles: FileList | File[]) => {
     if (selectedFiles.length === 0) return;
     const selectedFile = selectedFiles[0];
@@ -53,6 +69,7 @@ export const ImageConvertTool: React.FC<ImageConvertToolProps> = ({
       const arrayBuffer = await selectedFile.arrayBuffer();
       const info = await getPDFInfo(arrayBuffer);
 
+      revokeActiveUrls();
       setFile({
         file: selectedFile,
         arrayBuffer,
@@ -100,6 +117,8 @@ export const ImageConvertTool: React.FC<ImageConvertToolProps> = ({
         detail: `Rendering ${pageIndices.length} pages as high-resolution ${format.toUpperCase()} images...`
       });
 
+      revokeActiveUrls();
+
       const { images, zipBlob: generatedZip } = await convertPDFToImages(
         file.arrayBuffer,
         pageIndices,
@@ -116,6 +135,7 @@ export const ImageConvertTool: React.FC<ImageConvertToolProps> = ({
         }
       );
 
+      activeUrlsRef.current = images.map((img) => img.dataUrl);
       setConvertedImages(images);
       setZipBlob(generatedZip || null);
 
@@ -202,6 +222,7 @@ export const ImageConvertTool: React.FC<ImageConvertToolProps> = ({
 
             <button
               onClick={() => {
+                revokeActiveUrls();
                 setFile(null);
                 setConvertedImages(null);
                 setZipBlob(null);

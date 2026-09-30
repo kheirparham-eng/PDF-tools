@@ -15,6 +15,37 @@ export function formatFileSize(bytes: number): string {
 }
 
 /**
+ * Cooperative yield to browser event loop to prevent UI freezing,
+ * allow garbage collection, and keep rendering responsive.
+ */
+export function yieldToMainThread(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
+ * Convert canvas to Blob using standard Promise wrapper (avoids base64 strings)
+ */
+export function canvasToBlob(
+  canvas: HTMLCanvasElement,
+  type = 'image/jpeg',
+  quality = 0.85
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('Failed to create image blob from canvas'));
+        }
+      },
+      type,
+      quality
+    );
+  });
+}
+
+/**
  * Parse string like "1-3, 5, 8-10" into 0-based page indices array
  */
 export function parsePageRanges(rangeStr: string, totalPages: number): number[] {
@@ -62,23 +93,29 @@ export function parsePageRanges(rangeStr: string, totalPages: number): number[] 
 }
 
 /**
- * Get basic info and 1st page thumbnail for an uploaded PDF
+ * Get basic info and 1st page thumbnail for an uploaded PDF without cloning ArrayBuffer
  */
 export async function getPDFInfo(arrayBuffer: ArrayBuffer): Promise<{ pageCount: number; thumbnailUrl: string }> {
+  let pdfDoc: any = null;
+  let page: any = null;
+  const canvas = document.createElement('canvas');
+
   try {
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer.slice(0) });
-    const pdfDoc = await loadingTask.promise;
+    const loadingTask = pdfjsLib.getDocument({
+      data: new Uint8Array(arrayBuffer),
+      stopAtErrors: false
+    });
+    pdfDoc = await loadingTask.promise;
     const pageCount = pdfDoc.numPages;
 
-    // Render page 1 thumbnail
-    const page = await pdfDoc.getPage(1);
-    const viewport = page.getViewport({ scale: 0.3 });
+    // Render page 1 thumbnail at small scale for fast preview
+    page = await pdfDoc.getPage(1);
+    const viewport = page.getViewport({ scale: 0.25 });
 
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
+    canvas.width = Math.max(1, Math.floor(viewport.width));
+    canvas.height = Math.max(1, Math.floor(viewport.height));
 
+    const context = canvas.getContext('2d', { willReadFrequently: false });
     if (context) {
       await page.render({
         canvasContext: context,
@@ -87,50 +124,151 @@ export async function getPDFInfo(arrayBuffer: ArrayBuffer): Promise<{ pageCount:
       }).promise;
     }
 
-    const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
+    const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.75);
     return { pageCount, thumbnailUrl };
   } catch (error: any) {
     if (error?.name === 'PasswordException') {
       throw new Error('This PDF is password protected or encrypted. Please unlock it before processing.');
     }
     throw new Error('Failed to read PDF file. The document may be corrupted or invalid.');
+  } finally {
+    // Explicitly release memory
+    if (page) {
+      try { page.cleanup(); } catch { /* ignore */ }
+    }
+    canvas.width = 0;
+    canvas.height = 0;
+    if (pdfDoc) {
+      try { await pdfDoc.destroy(); } catch { /* ignore */ }
+    }
   }
 }
 
 /**
- * Render specific page to a canvas data URL
+ * Render single page thumbnail
  */
 export async function renderPageThumbnail(
   arrayBuffer: ArrayBuffer,
   pageIndex: number,
-  scale: number = 0.5
+  scale: number = 0.35
 ): Promise<{ dataUrl: string; width: number; height: number; aspectRatio: number }> {
-  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer.slice(0) });
-  const pdfDoc = await loadingTask.promise;
-  const page = await pdfDoc.getPage(pageIndex + 1);
-
-  const viewport = page.getViewport({ scale });
+  let pdfDoc: any = null;
+  let page: any = null;
   const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
 
-  if (context) {
-    await page.render({
-      canvasContext: context,
-      viewport: viewport,
-      canvas: canvas
-    }).promise;
+  try {
+    const loadingTask = pdfjsLib.getDocument({
+      data: new Uint8Array(arrayBuffer),
+      stopAtErrors: false
+    });
+    pdfDoc = await loadingTask.promise;
+    page = await pdfDoc.getPage(pageIndex + 1);
+
+    const viewport = page.getViewport({ scale });
+    canvas.width = Math.max(1, Math.floor(viewport.width));
+    canvas.height = Math.max(1, Math.floor(viewport.height));
+
+    const context = canvas.getContext('2d', { willReadFrequently: false });
+    if (context) {
+      await page.render({
+        canvasContext: context,
+        viewport: viewport,
+        canvas: canvas
+      }).promise;
+    }
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+    const aspectRatio = viewport.width / viewport.height;
+
+    return { dataUrl, width: viewport.width, height: viewport.height, aspectRatio };
+  } finally {
+    if (page) {
+      try { page.cleanup(); } catch { /* ignore */ }
+    }
+    canvas.width = 0;
+    canvas.height = 0;
+    if (pdfDoc) {
+      try { await pdfDoc.destroy(); } catch { /* ignore */ }
+    }
   }
-
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-  const aspectRatio = viewport.width / viewport.height;
-
-  return { dataUrl, width: viewport.width, height: viewport.height, aspectRatio };
 }
 
 /**
- * Merge multiple PDF file items into a single PDF Uint8Array
+ * Highly optimized batch thumbnail renderer for large PDFs.
+ * Loads the document ONCE and reuses canvas, yielding back to the event loop.
+ */
+export async function renderBatchThumbnails(
+  arrayBuffer: ArrayBuffer,
+  pageIndices: number[],
+  onThumbnail: (pageIndex: number, thumb: { dataUrl: string; aspectRatio: number }) => void,
+  options?: {
+    scale?: number;
+    signal?: AbortSignal;
+    quality?: number;
+  }
+): Promise<void> {
+  let pdfDoc: any = null;
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d', { willReadFrequently: false });
+  const scale = options?.scale ?? 0.28;
+  const quality = options?.quality ?? 0.72;
+
+  try {
+    const loadingTask = pdfjsLib.getDocument({
+      data: new Uint8Array(arrayBuffer),
+      stopAtErrors: false
+    });
+    pdfDoc = await loadingTask.promise;
+
+    for (let i = 0; i < pageIndices.length; i++) {
+      if (options?.signal?.aborted) {
+        break;
+      }
+
+      const pageIdx = pageIndices[i];
+      let page: any = null;
+
+      try {
+        page = await pdfDoc.getPage(pageIdx + 1);
+        const viewport = page.getViewport({ scale });
+
+        canvas.width = Math.max(1, Math.floor(viewport.width));
+        canvas.height = Math.max(1, Math.floor(viewport.height));
+
+        if (context) {
+          await page.render({
+            canvasContext: context,
+            viewport: viewport,
+            canvas: canvas
+          }).promise;
+
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          const aspectRatio = viewport.width / viewport.height;
+          onThumbnail(pageIdx, { dataUrl, aspectRatio });
+        }
+      } catch (pageErr) {
+        console.warn(`Could not render thumbnail for page ${pageIdx + 1}`, pageErr);
+      } finally {
+        if (page) {
+          try { page.cleanup(); } catch { /* ignore */ }
+        }
+      }
+
+      // Yield every page so UI stays completely responsive and GC can reclaim memory
+      await yieldToMainThread();
+    }
+  } finally {
+    canvas.width = 0;
+    canvas.height = 0;
+    if (pdfDoc) {
+      try { await pdfDoc.destroy(); } catch { /* ignore */ }
+    }
+  }
+}
+
+/**
+ * Merge multiple PDF file items into a single PDF Uint8Array.
+ * Optimized with useObjectStreams: false and sequential processing to avoid OOM.
  */
 export async function mergePDFs(
   files: PDFFileItem[],
@@ -154,8 +292,8 @@ export async function mergePDFs(
 
     let srcPdf: PDFDocument;
     try {
-      srcPdf = await PDFDocument.load(fileItem.arrayBuffer.slice(0), { ignoreEncryption: false });
-    } catch (err: any) {
+      srcPdf = await PDFDocument.load(new Uint8Array(fileItem.arrayBuffer), { ignoreEncryption: false });
+    } catch {
       throw new Error(`Failed to load "${fileItem.name}". File may be encrypted or corrupted.`);
     }
 
@@ -168,25 +306,34 @@ export async function mergePDFs(
       pageIndicesToCopy = Array.from({ length: totalSrcPages }, (_, i) => i);
     }
 
-    if (pageIndicesToCopy.length === 0) continue;
+    if (pageIndicesToCopy.length > 0) {
+      // Copy pages in chunks to keep memory footprint bounded
+      const CHUNK_SIZE = 50;
+      for (let c = 0; c < pageIndicesToCopy.length; c += CHUNK_SIZE) {
+        const slice = pageIndicesToCopy.slice(c, c + CHUNK_SIZE);
+        const copiedPages = await mergedPdf.copyPages(srcPdf, slice);
 
-    const copiedPages = await mergedPdf.copyPages(srcPdf, pageIndicesToCopy);
+        for (const page of copiedPages) {
+          if (fileItem.rotation) {
+            const currentRotation = page.getRotation().angle;
+            page.setRotation(degrees((currentRotation + fileItem.rotation) % 360));
+          }
+          mergedPdf.addPage(page);
+        }
 
-    for (const page of copiedPages) {
-      // Apply rotation if file item specifies it
-      if (fileItem.rotation) {
-        const currentRotation = page.getRotation().angle;
-        page.setRotation(degrees((currentRotation + fileItem.rotation) % 360));
+        await yieldToMainThread();
       }
-      mergedPdf.addPage(page);
     }
+
+    await yieldToMainThread();
   }
 
   if (onProgress) {
     onProgress(90, 'Generating combined PDF document...');
   }
 
-  const pdfBytes = await mergedPdf.save();
+  // useObjectStreams: false minimizes memory allocation overhead on large documents
+  const pdfBytes = await mergedPdf.save({ useObjectStreams: false });
 
   if (onProgress) {
     onProgress(100, 'Merge completed successfully!');
@@ -210,31 +357,39 @@ export async function splitAndExtractPDF(
     throw new Error('Please select at least one page to extract.');
   }
 
-  const srcPdf = await PDFDocument.load(arrayBuffer.slice(0));
+  const srcPdf = await PDFDocument.load(new Uint8Array(arrayBuffer), { ignoreEncryption: false });
   const baseName = originalFilename.replace(/\.pdf$/i, '');
 
   if (mode === 'single-pdf') {
     if (onProgress) onProgress(30, 'Creating extracted PDF document...');
 
     const newPdf = await PDFDocument.create();
-    const copiedPages = await newPdf.copyPages(srcPdf, selectedPageIndices);
+    
+    // Copy in chunks for memory safety
+    const CHUNK_SIZE = 50;
+    for (let c = 0; c < selectedPageIndices.length; c += CHUNK_SIZE) {
+      const chunk = selectedPageIndices.slice(c, c + CHUNK_SIZE);
+      const copiedPages = await newPdf.copyPages(srcPdf, chunk);
 
-    copiedPages.forEach((page, idx) => {
-      const pageIndex = selectedPageIndices[idx];
-      const extraRot = rotations.get(pageIndex) || 0;
-      if (extraRot !== 0) {
-        const curRot = page.getRotation().angle;
-        page.setRotation(degrees((curRot + extraRot) % 360));
-      }
-      newPdf.addPage(page);
-    });
+      copiedPages.forEach((page, idx) => {
+        const pageIndex = chunk[idx];
+        const extraRot = rotations.get(pageIndex) || 0;
+        if (extraRot !== 0) {
+          const curRot = page.getRotation().angle;
+          page.setRotation(degrees((curRot + extraRot) % 360));
+        }
+        newPdf.addPage(page);
+      });
+
+      await yieldToMainThread();
+    }
 
     if (onProgress) onProgress(80, 'Finalizing extracted PDF...');
-    const pdfBytes = await newPdf.save();
+    const pdfBytes = await newPdf.save({ useObjectStreams: false });
     if (onProgress) onProgress(100, 'Done!');
 
     return {
-      blob: new Blob([pdfBytes], { type: 'application/pdf' }),
+      blob: new Blob([pdfBytes as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }),
       filename: `${baseName}_extracted.pdf`
     };
   } else {
@@ -261,12 +416,19 @@ export async function splitAndExtractPDF(
       }
 
       singlePdf.addPage(copiedPage);
-      const pdfBytes = await singlePdf.save();
+      const pdfBytes = await singlePdf.save({ useObjectStreams: false });
       zip.file(`${baseName}_page_${pageIdx + 1}.pdf`, pdfBytes);
+
+      // Yield after each single PDF so memory is freed
+      await yieldToMainThread();
     }
 
     if (onProgress) onProgress(90, 'Compressing ZIP archive...');
-    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const zipBlob = await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 4 }
+    });
     if (onProgress) onProgress(100, 'Done!');
 
     return {
@@ -277,7 +439,7 @@ export async function splitAndExtractPDF(
 }
 
 /**
- * Convert PDF pages to images (PNG or JPEG)
+ * Convert PDF pages to images (PNG or JPEG) using direct Blob generation to prevent OOM
  */
 export async function convertPDFToImages(
   arrayBuffer: ArrayBuffer,
@@ -291,68 +453,109 @@ export async function convertPDFToImages(
     throw new Error('No pages selected for image conversion.');
   }
 
-  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer.slice(0) });
-  const pdfDoc = await loadingTask.promise;
-  const baseName = originalFilename.replace(/\.pdf$/i, '');
-  const total = selectedPageIndices.length;
+  let pdfDoc: any = null;
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d', { willReadFrequently: false });
 
-  const resultImages: Array<{ pageNumber: number; dataUrl: string; blob: Blob; filename: string }> = [];
-  const zip = new JSZip();
+  try {
+    const loadingTask = pdfjsLib.getDocument({
+      data: new Uint8Array(arrayBuffer),
+      stopAtErrors: false
+    });
+    pdfDoc = await loadingTask.promise;
+    const baseName = originalFilename.replace(/\.pdf$/i, '');
+    const total = selectedPageIndices.length;
 
-  for (let i = 0; i < total; i++) {
-    const pageIdx = selectedPageIndices[i];
-    const pageNumber = pageIdx + 1;
+    const resultImages: Array<{ pageNumber: number; dataUrl: string; blob: Blob; filename: string }> = [];
+    const zip = new JSZip();
 
-    if (onProgress) {
-      onProgress(
-        Math.round((i / total) * 85),
-        `Rendering page ${pageNumber} as image (${i + 1}/${total})...`
-      );
+    // Clamp qualityScale to avoid canvas memory explosions
+    const safeScale = Math.min(qualityScale, 2.0);
+
+    for (let i = 0; i < total; i++) {
+      const pageIdx = selectedPageIndices[i];
+      const pageNumber = pageIdx + 1;
+
+      if (onProgress) {
+        onProgress(
+          Math.round((i / total) * 85),
+          `Rendering page ${pageNumber} as image (${i + 1}/${total})...`
+        );
+      }
+
+      let page: any = null;
+      try {
+        page = await pdfDoc.getPage(pageNumber);
+        const viewport = page.getViewport({ scale: safeScale });
+
+        // Clamp maximum pixel dimension to 3200px
+        let renderWidth = viewport.width;
+        let renderHeight = viewport.height;
+        let renderScale = safeScale;
+        const maxDim = Math.max(renderWidth, renderHeight);
+
+        if (maxDim > 3200) {
+          const ratio = 3200 / maxDim;
+          renderScale = safeScale * ratio;
+          const adjustedViewport = page.getViewport({ scale: renderScale });
+          renderWidth = adjustedViewport.width;
+          renderHeight = adjustedViewport.height;
+        }
+
+        canvas.width = Math.floor(renderWidth);
+        canvas.height = Math.floor(renderHeight);
+
+        if (context) {
+          await page.render({
+            canvasContext: context,
+            viewport: page.getViewport({ scale: renderScale }),
+            canvas: canvas
+          }).promise;
+        }
+
+        const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+        const extension = format === 'png' ? 'png' : 'jpg';
+        const filename = `${baseName}_page_${pageNumber}.${extension}`;
+
+        // Direct toBlob conversion - does NOT allocate giant base64 strings
+        const blob = await canvasToBlob(canvas, mimeType, format === 'jpeg' ? 0.88 : undefined);
+        const objectUrl = URL.createObjectURL(blob);
+
+        resultImages.push({ pageNumber, dataUrl: objectUrl, blob, filename });
+        zip.file(filename, blob);
+      } finally {
+        if (page) {
+          try { page.cleanup(); } catch { /* ignore */ }
+        }
+      }
+
+      await yieldToMainThread();
     }
 
-    const page = await pdfDoc.getPage(pageNumber);
-    const viewport = page.getViewport({ scale: qualityScale });
-
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-
-    if (context) {
-      await page.render({
-        canvasContext: context,
-        viewport: viewport,
-        canvas: canvas
-      }).promise;
+    let zipBlob: Blob | undefined = undefined;
+    if (resultImages.length > 1) {
+      if (onProgress) onProgress(92, 'Generating images ZIP archive...');
+      zipBlob = await zip.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 4 }
+      });
     }
 
-    const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
-    const extension = format === 'png' ? 'png' : 'jpg';
-    const filename = `${baseName}_page_${pageNumber}.${extension}`;
+    if (onProgress) onProgress(100, 'Image conversion completed!');
 
-    const dataUrl = canvas.toDataURL(mimeType, format === 'jpeg' ? 0.92 : 1.0);
-
-    // Convert dataUrl to Blob
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
-
-    resultImages.push({ pageNumber, dataUrl, blob, filename });
-    zip.file(filename, blob);
+    return { images: resultImages, zipBlob };
+  } finally {
+    canvas.width = 0;
+    canvas.height = 0;
+    if (pdfDoc) {
+      try { await pdfDoc.destroy(); } catch { /* ignore */ }
+    }
   }
-
-  let zipBlob: Blob | undefined = undefined;
-  if (resultImages.length > 1) {
-    if (onProgress) onProgress(92, 'Generating images ZIP archive...');
-    zipBlob = await zip.generateAsync({ type: 'blob' });
-  }
-
-  if (onProgress) onProgress(100, 'Image conversion completed!');
-
-  return { images: resultImages, zipBlob };
 }
 
 /**
- * Convert selected images to a merged PDF file
+ * Convert selected images to a merged PDF file with memory optimization
  */
 export async function convertImagesToPDF(
   images: ImageToPdfItem[],
@@ -383,7 +586,6 @@ export async function convertImagesToPDF(
     if (fileType.includes('png')) {
       embeddedImg = await pdfDoc.embedPng(arrayBuffer);
     } else {
-      // JPEG / JPG / WebP fallback
       embeddedImg = await pdfDoc.embedJpg(arrayBuffer);
     }
 
@@ -398,7 +600,6 @@ export async function convertImagesToPDF(
     let yPos = margin;
 
     if (pageSizeOption === 'a4') {
-      // Standard A4 dimensions in points (595.28 x 841.89)
       pageWidth = 595.28;
       pageHeight = 841.89;
 
@@ -409,7 +610,6 @@ export async function convertImagesToPDF(
       renderWidth = imgWidth * scale;
       renderHeight = imgHeight * scale;
 
-      // Center on page
       xPos = (pageWidth - renderWidth) / 2;
       yPos = (pageHeight - renderHeight) / 2;
     }
@@ -421,10 +621,12 @@ export async function convertImagesToPDF(
       width: renderWidth,
       height: renderHeight
     });
+
+    await yieldToMainThread();
   }
 
   if (onProgress) onProgress(95, 'Saving final PDF document...');
-  const pdfBytes = await pdfDoc.save();
+  const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
   if (onProgress) onProgress(100, 'Images converted to PDF!');
 
   return pdfBytes;
@@ -438,7 +640,7 @@ export async function reorderPDFPages(
   pageOrderWithRotation: Array<{ originalIndex: number; rotation: number }>,
   onProgress?: (progress: number, detail: string) => void
 ): Promise<Uint8Array> {
-  const srcPdf = await PDFDocument.load(arrayBuffer.slice(0));
+  const srcPdf = await PDFDocument.load(new Uint8Array(arrayBuffer), { ignoreEncryption: false });
   const newPdf = await PDFDocument.create();
 
   const total = pageOrderWithRotation.length;
@@ -459,109 +661,139 @@ export async function reorderPDFPages(
     }
 
     newPdf.addPage(copiedPage);
+
+    if (i % 10 === 0) {
+      await yieldToMainThread();
+    }
   }
 
   if (onProgress) onProgress(95, 'Generating reordered PDF...');
-  const pdfBytes = await newPdf.save();
+  const pdfBytes = await newPdf.save({ useObjectStreams: false });
   if (onProgress) onProgress(100, 'Reorder complete!');
 
   return pdfBytes;
 }
 
 /**
- * Convert PDF pages to Grayscale / Black & White
+ * Convert PDF pages to Grayscale / Black & White safely without memory bloat
  */
 export async function convertToGrayscalePDF(
   arrayBuffer: ArrayBuffer,
   mode: 'grayscale' | 'contrast' | 'sepia' = 'grayscale',
   onProgress?: (progress: number, detail: string) => void
 ): Promise<Uint8Array> {
-  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer.slice(0) });
-  const pdfDoc = await loadingTask.promise;
-  const numPages = pdfDoc.numPages;
+  let pdfDoc: any = null;
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d', { willReadFrequently: true });
 
-  const newPdf = await PDFDocument.create();
+  try {
+    const loadingTask = pdfjsLib.getDocument({
+      data: new Uint8Array(arrayBuffer),
+      stopAtErrors: false
+    });
+    pdfDoc = await loadingTask.promise;
+    const numPages = pdfDoc.numPages;
 
-  for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-    if (onProgress) {
-      onProgress(
-        Math.round(((pageNum - 1) / numPages) * 85),
-        `Converting page ${pageNum} of ${numPages} to B&W...`
-      );
-    }
+    const newPdf = await PDFDocument.create();
 
-    const page = await pdfDoc.getPage(pageNum);
-    const scale = 2.0; // High resolution rendering for crisp text
-    const viewport = page.getViewport({ scale });
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+      if (onProgress) {
+        onProgress(
+          Math.round(((pageNum - 1) / numPages) * 85),
+          `Converting page ${pageNum} of ${numPages} to B&W...`
+        );
+      }
 
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
+      let page: any = null;
+      try {
+        page = await pdfDoc.getPage(pageNum);
+        const unscaledViewport = page.getViewport({ scale: 1.0 });
 
-    if (context) {
-      await page.render({
-        canvasContext: context,
-        viewport: viewport,
-        canvas: canvas
-      }).promise;
+        // Calculate clamped scale so canvas never exceeds 2048px dimension
+        const maxDimension = Math.max(unscaledViewport.width, unscaledViewport.height);
+        const targetScale = Math.min(1.5, 2048 / Math.max(1, maxDimension));
+        const viewport = page.getViewport({ scale: targetScale });
 
-      // Pixel filter manipulation
-      const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imgData.data;
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
 
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
+        if (context) {
+          await page.render({
+            canvasContext: context,
+            viewport: viewport,
+            canvas: canvas
+          }).promise;
 
-        if (mode === 'grayscale') {
-          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-          data[i] = gray;
-          data[i + 1] = gray;
-          data[i + 2] = gray;
-        } else if (mode === 'contrast') {
-          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-          const bw = gray > 140 ? 255 : 0;
-          data[i] = bw;
-          data[i + 1] = bw;
-          data[i + 2] = bw;
-        } else if (mode === 'sepia') {
-          const sr = 0.393 * r + 0.769 * g + 0.189 * b;
-          const sg = 0.349 * r + 0.686 * g + 0.168 * b;
-          const sb = 0.272 * r + 0.534 * g + 0.131 * b;
-          data[i] = Math.min(255, sr);
-          data[i + 1] = Math.min(255, sg);
-          data[i + 2] = Math.min(255, sb);
+          // In-place pixel manipulation
+          const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imgData.data;
+
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+
+            if (mode === 'grayscale') {
+              const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+              data[i] = gray;
+              data[i + 1] = gray;
+              data[i + 2] = gray;
+            } else if (mode === 'contrast') {
+              const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+              const bw = gray > 140 ? 255 : 0;
+              data[i] = bw;
+              data[i + 1] = bw;
+              data[i + 2] = bw;
+            } else if (mode === 'sepia') {
+              const sr = 0.393 * r + 0.769 * g + 0.189 * b;
+              const sg = 0.349 * r + 0.686 * g + 0.168 * b;
+              const sb = 0.272 * r + 0.534 * g + 0.131 * b;
+              data[i] = Math.min(255, sr);
+              data[i + 1] = Math.min(255, sg);
+              data[i + 2] = Math.min(255, sb);
+            }
+          }
+
+          context.putImageData(imgData, 0, 0);
+        }
+
+        // Direct blob -> arrayBuffer without base64 string allocations
+        const blob = await canvasToBlob(canvas, 'image/jpeg', 0.85);
+        const jpegBytes = await blob.arrayBuffer();
+
+        const embeddedImage = await newPdf.embedJpg(jpegBytes);
+        const newPage = newPdf.addPage([unscaledViewport.width, unscaledViewport.height]);
+        newPage.drawImage(embeddedImage, {
+          x: 0,
+          y: 0,
+          width: unscaledViewport.width,
+          height: unscaledViewport.height
+        });
+      } finally {
+        if (page) {
+          try { page.cleanup(); } catch { /* ignore */ }
         }
       }
 
-      context.putImageData(imgData, 0, 0);
+      await yieldToMainThread();
     }
 
-    const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.88);
-    const jpegBytes = await fetch(jpegDataUrl).then((res) => res.arrayBuffer());
+    if (onProgress) onProgress(92, 'Generating B&W PDF file...');
+    const pdfBytes = await newPdf.save({ useObjectStreams: false });
+    if (onProgress) onProgress(100, 'Grayscale conversion complete!');
 
-    const embeddedImage = await newPdf.embedJpg(jpegBytes);
-    const unscaledViewport = page.getViewport({ scale: 1.0 });
-    const newPage = newPdf.addPage([unscaledViewport.width, unscaledViewport.height]);
-    newPage.drawImage(embeddedImage, {
-      x: 0,
-      y: 0,
-      width: unscaledViewport.width,
-      height: unscaledViewport.height
-    });
+    return pdfBytes;
+  } finally {
+    canvas.width = 0;
+    canvas.height = 0;
+    if (pdfDoc) {
+      try { await pdfDoc.destroy(); } catch { /* ignore */ }
+    }
   }
-
-  if (onProgress) onProgress(92, 'Generating B&W PDF file...');
-  const pdfBytes = await newPdf.save();
-  if (onProgress) onProgress(100, 'Grayscale conversion complete!');
-
-  return pdfBytes;
 }
 
 /**
- * Compress PDF document size by optimizing images and encoding
+ * Compress PDF document size by optimizing images and encoding with bounded resolution
  */
 export async function compressPDF(
   arrayBuffer: ArrayBuffer,
@@ -569,75 +801,105 @@ export async function compressPDF(
   onProgress?: (progress: number, detail: string) => void
 ): Promise<{ pdfBytes: Uint8Array; originalSize: number; compressedSize: number }> {
   const originalSize = arrayBuffer.byteLength;
-  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer.slice(0) });
-  const pdfDoc = await loadingTask.promise;
-  const numPages = pdfDoc.numPages;
+  let pdfDoc: any = null;
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d', { willReadFrequently: false });
 
-  const newPdf = await PDFDocument.create();
-
-  let renderScale = 1.5;
-  let jpegQuality = 0.72;
-
-  if (level === 'maximum') {
-    renderScale = 1.2;
-    jpegQuality = 0.55;
-  } else if (level === 'light') {
-    renderScale = 1.8;
-    jpegQuality = 0.85;
-  }
-
-  for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-    if (onProgress) {
-      onProgress(
-        Math.round(((pageNum - 1) / numPages) * 85),
-        `Optimizing page ${pageNum} of ${numPages}...`
-      );
-    }
-
-    const page = await pdfDoc.getPage(pageNum);
-    const viewport = page.getViewport({ scale: renderScale });
-
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-
-    if (context) {
-      await page.render({
-        canvasContext: context,
-        viewport: viewport,
-        canvas: canvas
-      }).promise;
-    }
-
-    const jpegDataUrl = canvas.toDataURL('image/jpeg', jpegQuality);
-    const jpegBytes = await fetch(jpegDataUrl).then((res) => res.arrayBuffer());
-
-    const embeddedImage = await newPdf.embedJpg(jpegBytes);
-    const unscaledViewport = page.getViewport({ scale: 1.0 });
-    const newPage = newPdf.addPage([unscaledViewport.width, unscaledViewport.height]);
-    newPage.drawImage(embeddedImage, {
-      x: 0,
-      y: 0,
-      width: unscaledViewport.width,
-      height: unscaledViewport.height
+  try {
+    const loadingTask = pdfjsLib.getDocument({
+      data: new Uint8Array(arrayBuffer),
+      stopAtErrors: false
     });
+    pdfDoc = await loadingTask.promise;
+    const numPages = pdfDoc.numPages;
+
+    const newPdf = await PDFDocument.create();
+
+    let targetMaxDim = 1800;
+    let baseScale = 1.25;
+    let jpegQuality = 0.68;
+
+    if (level === 'maximum') {
+      targetMaxDim = 1400;
+      baseScale = 1.0;
+      jpegQuality = 0.50;
+    } else if (level === 'light') {
+      targetMaxDim = 2200;
+      baseScale = 1.5;
+      jpegQuality = 0.80;
+    }
+
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+      if (onProgress) {
+        onProgress(
+          Math.round(((pageNum - 1) / numPages) * 85),
+          `Optimizing page ${pageNum} of ${numPages}...`
+        );
+      }
+
+      let page: any = null;
+      try {
+        page = await pdfDoc.getPage(pageNum);
+        const unscaledViewport = page.getViewport({ scale: 1.0 });
+
+        // Calculate clamped scale so giant posters or CAD drawings don't exhaust RAM
+        const maxDimension = Math.max(unscaledViewport.width, unscaledViewport.height);
+        const scale = Math.min(baseScale, targetMaxDim / Math.max(1, maxDimension));
+        const viewport = page.getViewport({ scale });
+
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+
+        if (context) {
+          await page.render({
+            canvasContext: context,
+            viewport: viewport,
+            canvas: canvas
+          }).promise;
+        }
+
+        // Direct toBlob -> arrayBuffer avoids gigabytes of base64 string allocations
+        const blob = await canvasToBlob(canvas, 'image/jpeg', jpegQuality);
+        const jpegBytes = await blob.arrayBuffer();
+
+        const embeddedImage = await newPdf.embedJpg(jpegBytes);
+        const newPage = newPdf.addPage([unscaledViewport.width, unscaledViewport.height]);
+        newPage.drawImage(embeddedImage, {
+          x: 0,
+          y: 0,
+          width: unscaledViewport.width,
+          height: unscaledViewport.height
+        });
+      } finally {
+        if (page) {
+          try { page.cleanup(); } catch { /* ignore */ }
+        }
+      }
+
+      await yieldToMainThread();
+    }
+
+    if (onProgress) onProgress(92, 'Finalizing compressed PDF...');
+    const pdfBytes = await newPdf.save({ useObjectStreams: false });
+    const compressedSize = pdfBytes.byteLength;
+
+    if (onProgress) onProgress(100, 'PDF compression completed!');
+
+    return { pdfBytes, originalSize, compressedSize };
+  } finally {
+    canvas.width = 0;
+    canvas.height = 0;
+    if (pdfDoc) {
+      try { await pdfDoc.destroy(); } catch { /* ignore */ }
+    }
   }
-
-  if (onProgress) onProgress(92, 'Finalizing compressed PDF...');
-  const pdfBytes = await newPdf.save();
-  const compressedSize = pdfBytes.byteLength;
-
-  if (onProgress) onProgress(100, 'PDF compression completed!');
-
-  return { pdfBytes, originalSize, compressedSize };
 }
 
 /**
- * Helper to trigger browser download of blob/file
+ * Helper to trigger browser download of blob/file with safe URL revoking
  */
 export function downloadFile(blob: Blob | Uint8Array, filename: string) {
-  const fileBlob = blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' });
+  const fileBlob = blob instanceof Blob ? blob : new Blob([blob as Uint8Array<ArrayBuffer>], { type: 'application/pdf' });
   const url = URL.createObjectURL(fileBlob);
   const link = document.createElement('a');
   link.href = url;
@@ -645,5 +907,5 @@ export function downloadFile(blob: Blob | Uint8Array, filename: string) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 }

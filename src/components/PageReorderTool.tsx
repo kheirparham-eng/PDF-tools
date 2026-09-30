@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   RefreshCw,
   Trash2,
@@ -14,7 +14,7 @@ import confetti from 'canvas-confetti';
 import { ProcessingState, ToastMessage } from '../types';
 import {
   getPDFInfo,
-  renderPageThumbnail,
+  renderBatchThumbnails,
   reorderPDFPages,
   formatFileSize,
   downloadFile
@@ -43,6 +43,16 @@ export const PageReorderTool: React.FC<PageReorderToolProps> = ({
   const [outputFilename, setOutputFilename] = useState('reordered_document.pdf');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   const handleFileSelected = async (selectedFiles: FileList | File[]) => {
     if (selectedFiles.length === 0) return;
     const selectedFile = selectedFiles[0];
@@ -55,6 +65,12 @@ export const PageReorderTool: React.FC<PageReorderToolProps> = ({
       });
       return;
     }
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
       const arrayBuffer = await selectedFile.arrayBuffer();
@@ -77,8 +93,46 @@ export const PageReorderTool: React.FC<PageReorderToolProps> = ({
       setPages(initialPages);
       setOutputFilename(`${selectedFile.name.replace(/\.pdf$/i, '')}_reordered.pdf`);
 
-      // Asynchronously render page thumbnails
-      renderThumbnails(arrayBuffer, initialPages);
+      // Asynchronously render page thumbnails with throttled state updates
+      const pageIndices = Array.from({ length: info.pageCount }, (_, i) => i);
+      let pendingUpdates: Record<number, string> = {};
+      let flushTimer: any = null;
+
+      const flush = () => {
+        if (Object.keys(pendingUpdates).length === 0) return;
+        const updates = { ...pendingUpdates };
+        pendingUpdates = {};
+        setPages((prev) =>
+          prev.map((p) =>
+            updates[p.originalIndex] ? { ...p, thumbnailUrl: updates[p.originalIndex] } : p
+          )
+        );
+      };
+
+      renderBatchThumbnails(
+        arrayBuffer,
+        pageIndices,
+        (pageIdx, thumb) => {
+          pendingUpdates[pageIdx] = thumb.dataUrl;
+          if (!flushTimer) {
+            flushTimer = setTimeout(() => {
+              flushTimer = null;
+              flush();
+            }, 80);
+          }
+        },
+        { signal: controller.signal, scale: 0.28 }
+      ).then(() => {
+        if (flushTimer) {
+          clearTimeout(flushTimer);
+          flushTimer = null;
+        }
+        flush();
+      }).catch((e) => {
+        if (e?.name !== 'AbortError') {
+          console.warn('Batch thumbnail error in reorder:', e);
+        }
+      });
 
       addToast({
         type: 'success',
@@ -94,20 +148,6 @@ export const PageReorderTool: React.FC<PageReorderToolProps> = ({
     }
   };
 
-  const renderThumbnails = async (arrayBuffer: ArrayBuffer, pageList: PageItem[]) => {
-    for (let i = 0; i < pageList.length; i++) {
-      try {
-        const thumb = await renderPageThumbnail(arrayBuffer, pageList[i].originalIndex, 0.4);
-        setPages((prev) =>
-          prev.map((p) =>
-            p.id === pageList[i].id ? { ...p, thumbnailUrl: thumb.dataUrl } : p
-          )
-        );
-      } catch (e) {
-        console.error(`Error rendering page ${i + 1}`, e);
-      }
-    }
-  };
 
   const rotatePage = (id: string) => {
     setPages((prev) =>
@@ -279,6 +319,9 @@ export const PageReorderTool: React.FC<PageReorderToolProps> = ({
 
             <button
               onClick={() => {
+                if (abortControllerRef.current) {
+                  abortControllerRef.current.abort();
+                }
                 setFile(null);
                 setPages([]);
               }}

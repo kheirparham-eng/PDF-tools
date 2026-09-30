@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Scissors,
   CheckSquare,
@@ -17,7 +17,7 @@ import confetti from 'canvas-confetti';
 import { ProcessingState, ToastMessage, PDFPageInfo } from '../types';
 import {
   getPDFInfo,
-  renderPageThumbnail,
+  renderBatchThumbnails,
   splitAndExtractPDF,
   parsePageRanges,
   downloadFile,
@@ -41,6 +41,16 @@ export const SplitTool: React.FC<SplitToolProps> = ({ onProcessingChange, addToa
   // Zoom preview modal
   const [previewPage, setPreviewPage] = useState<{ pageNumber: number; url: string; rotation: number } | null>(null);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   const handleFileSelected = async (selectedFiles: FileList | File[]) => {
     if (selectedFiles.length === 0) return;
     const selectedFile = selectedFiles[0];
@@ -53,6 +63,13 @@ export const SplitTool: React.FC<SplitToolProps> = ({ onProcessingChange, addToa
       });
       return;
     }
+
+    // Cancel any previous ongoing thumbnail generation
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
       setIsLoadingPages(true);
@@ -78,8 +95,48 @@ export const SplitTool: React.FC<SplitToolProps> = ({ onProcessingChange, addToa
       setPages(newPages);
       setRangeInput(`1-${info.pageCount}`);
 
-      // Render page thumbnails asynchronously
-      renderThumbnails(arrayBuffer, newPages);
+      // Batch thumbnail rendering with throttle to prevent UI freezing
+      const pageIndices = Array.from({ length: info.pageCount }, (_, i) => i);
+      let pendingUpdates: Record<number, { dataUrl: string; aspectRatio: number }> = {};
+      let flushTimer: any = null;
+
+      const flush = () => {
+        if (Object.keys(pendingUpdates).length === 0) return;
+        const updates = { ...pendingUpdates };
+        pendingUpdates = {};
+        setPages((prev) =>
+          prev.map((p) =>
+            updates[p.pageIndex]
+              ? { ...p, thumbnailUrl: updates[p.pageIndex].dataUrl, aspectRatio: updates[p.pageIndex].aspectRatio }
+              : p
+          )
+        );
+      };
+
+      renderBatchThumbnails(
+        arrayBuffer,
+        pageIndices,
+        (pageIdx, thumb) => {
+          pendingUpdates[pageIdx] = thumb;
+          if (!flushTimer) {
+            flushTimer = setTimeout(() => {
+              flushTimer = null;
+              flush();
+            }, 80);
+          }
+        },
+        { signal: controller.signal, scale: 0.28 }
+      ).then(() => {
+        if (flushTimer) {
+          clearTimeout(flushTimer);
+          flushTimer = null;
+        }
+        flush();
+      }).catch((e) => {
+        if (e?.name !== 'AbortError') {
+          console.warn('Batch thumbnail rendering finished with warning:', e);
+        }
+      });
 
       addToast({
         type: 'success',
@@ -97,22 +154,6 @@ export const SplitTool: React.FC<SplitToolProps> = ({ onProcessingChange, addToa
     }
   };
 
-  const renderThumbnails = async (arrayBuffer: ArrayBuffer, initialPages: PDFPageInfo[]) => {
-    for (let i = 0; i < initialPages.length; i++) {
-      try {
-        const thumb = await renderPageThumbnail(arrayBuffer, i, 0.4);
-        setPages((prev) =>
-          prev.map((p) =>
-            p.pageIndex === i
-              ? { ...p, thumbnailUrl: thumb.dataUrl, aspectRatio: thumb.aspectRatio }
-              : p
-          )
-        );
-      } catch (e) {
-        console.error(`Error rendering page ${i + 1}`, e);
-      }
-    }
-  };
 
   const togglePageSelection = (index: number) => {
     setPages((prev) => {
@@ -327,6 +368,9 @@ export const SplitTool: React.FC<SplitToolProps> = ({ onProcessingChange, addToa
 
             <button
               onClick={() => {
+                if (abortControllerRef.current) {
+                  abortControllerRef.current.abort();
+                }
                 setFile(null);
                 setPages([]);
               }}
