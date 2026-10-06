@@ -1,99 +1,76 @@
-# Liquid Glass PDF Suite 📄✨
+# PDF Utility Studio 📄✨
 
-A client-side, privacy-first PDF utility suite built with React 19, Vite, Tailwind CSS v4, `pdf-lib`, and `pdfjs-dist`. 100% of processing happens directly in the browser—no files or personal data are ever sent to any external server.
+[![React](https://img.shields.io/badge/React-19-61dafb?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-6-646cff?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38bdf8?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Privacy](https://img.shields.io/badge/Privacy-100%25_Client--Side-10b981?style=flat-square&logo=shield&logoColor=white)](#-privacy--security)
+
+A fast, client-side, privacy-first PDF utility suite crafted with a modern Liquid Glass aesthetic. All document processing happens strictly inside your browser's local sandbox—no file uploads, zero telemetry, and complete offline capability.
 
 🌐 **Live Demo**: [https://kheirparham-eng.github.io/PDF-tools](https://kheirparham-eng.github.io/PDF-tools)
 
 ---
 
-## 🚀 Features
+## ⚡ Key Features
 
-- **Merge PDFs**: Combine multiple PDF files in custom order with page count previews and drag-and-drop reordering.
-- **Split & Extract Pages**: Select custom ranges or individual pages to export as a single merged PDF or ZIP archive.
-- **Grayscale / B&W Converter**: Strip colors and convert PDFs to standard Grayscale, High Contrast B&W, or Vintage Sepia.
-- **Compress PDF**: Reduce file size using Recommended, Extreme, or Light compression presets.
-- **PDF to Image**: Render PDF pages into high-resolution JPG or PNG images (single image or ZIP archive).
-- **Image to PDF**: Convert photos (JPG, PNG, WebP) into custom PDF pages with layout, sizing, and margin controls.
-- **Reorder & Rotate Pages**: Drag and re-arrange or rotate individual pages in real time before saving.
+| Tool | Description |
+| :--- | :--- |
+| 🖨️ **Print & Page Layout** | Pre-press layout engine with N-Up imposition (1/2/4-Up), duplex mirrored gutters, Bates numbering, custom margins, crop marks, and direct browser printing. |
+| 🔗 **Merge PDFs** | Combine multiple PDF files in custom order with page count previews and drag-and-drop sequencing. |
+| ✂️ **Split & Extract** | Extract specific pages or ranges to a single combined document or individual files in a ZIP archive. |
+| ⚡ **Compress PDF** | Reduce PDF file size significantly while preserving typography and image sharpness. |
+| 🖼️ **PDF to Image** | Export PDF pages as high-resolution PNG or JPEG raster images. |
+| 📷 **Image to PDF** | Convert PNG, JPG, or WebP photos into standardized, custom-margined PDF documents. |
+| 🔄 **Reorder & Rotate** | Interactively drag to rearrange pages, delete unwanted sheets, and rotate orientations in real time. |
+| 🎨 **Grayscale / B&W** | Convert color documents to clean monochrome for printing and archival compliance. |
 
 ---
 
-## 💻 How to Run Locally
+## 🚀 Quickstart
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) (v18 or higher recommended)
-- `npm` (comes with Node.js)
+- [Node.js](https://nodejs.org/) (v18+) & `npm`
 
-### Step-by-Step Local Setup
+### Installation & Run
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/kheirparham-eng/PDF-tools.git
-   cd PDF-tools
-   ```
+```bash
+# 1. Clone the repository
+git clone https://github.com/kheirparham-eng/PDF-tools.git
+cd PDF-tools
 
-2. **Install Dependencies**
-   ```bash
-   npm install
-   ```
+# 2. Install dependencies
+npm install
 
-3. **Start the Development Server**
-   ```bash
-   npm run dev
-   ```
-   Open your browser and navigate to `http://localhost:3000` (or `http://localhost:5173`).
+# 3. Start local development server
+npm run dev
+```
 
-4. **Build for Production**
-   ```bash
-   npm run build
-   ```
-   This generates optimized static production files inside the `dist/` directory.
+Visit `http://localhost:3000` in your browser.
 
-5. **Preview Production Build Locally**
-   ```bash
-   npm run preview
-   ```
+```bash
+# Build for production
+npm run build
 
----
-
-## 🌐 How to Host on GitHub Pages
-
-This project includes a pre-configured GitHub Actions deployment workflow (`.github/workflows/deploy.yml`).
-
-### Step-by-step Setup on GitHub:
-
-1. **Commit and push all recent changes to GitHub**:
-   ```bash
-   git add .
-   git commit -m "Add GitHub Pages workflow and updated configuration"
-   git push origin main
-   ```
-
-2. **Enable GitHub Actions for Pages**:
-   - Navigate to your repository: [https://github.com/kheirparham-eng/PDF-tools](https://github.com/kheirparham-eng/PDF-tools)
-   - Click on **Settings** tab at the top.
-   - In the left sidebar under *Code and automation*, click **Pages**.
-   - Under **Build and deployment** → **Source**, select **GitHub Actions** from the dropdown menu (instead of "Deploy from a branch").
-
-3. **Automatic Deployment**:
-   - Click on the **Actions** tab at the top of the repository.
-   - You will see the **Deploy to GitHub Pages** workflow running automatically.
-   - Once the workflow turns green, your site will be live at:  
-     👉 **[https://kheirparham-eng.github.io/PDF-tools/](https://kheirparham-eng.github.io/PDF-tools/)**
+# Preview production build
+npm run preview
+```
 
 ---
 
 ## 🔒 Privacy & Security
 
-- **100% Local Browser Execution**: All file reads, page rendering, image manipulation, and PDF generation occur in your browser's WebAssembly and JavaScript environment.
-- **Zero Server Uploads**: Files never touch any backend server or third-party service.
+- **Zero Cloud Uploads**: Files are read directly via HTML5 File API and processed in isolated browser memory.
+- **Offline & Air-Gapped Ready**: Operates seamlessly without an active internet connection.
+- **Instant Clean Memory**: All buffers and canvas objects are purged upon closing or refreshing the tab.
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Built With
 
-- **Framework**: React 19 + TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS v4
-- **PDF Processing**: `pdf-lib`, `pdfjs-dist`
-- **Icons & UI**: Lucide React, Motion, Canvas Confetti
+- **Core**: React 19, TypeScript, Vite
+- **Styling**: Tailwind CSS v4, Liquid Glass Frost System
+- **PDF Engines**: `pdf-lib` (Document generation & imposition), `pdfjs-dist` (High-fidelity rasterization & previews)
+- **Icons**: Lucide React
+
+

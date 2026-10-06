@@ -1153,14 +1153,25 @@ export const PrintTool: React.FC<PrintToolProps> = ({
                     )}
 
                     {/* Printable Safe Margins (Dashed border inside paper) */}
-                    <div
-                      className="absolute inset-0 border border-dashed border-zinc-400/40 pointer-events-none z-10"
-                      style={{
-                        margin: marginPreset === 'none' ? '0' : marginPreset === 'narrow' ? '8px' : marginPreset === 'wide' ? '22px' : '13px',
-                        marginLeft: bindingGutterMm > 0 && (!mirrorGutters || currentSheetIndex % 2 === 0) ? `${13 + Math.min(28, (bindingGutterMm / 210) * 100)}px` : undefined,
-                        marginRight: bindingGutterMm > 0 && mirrorGutters && currentSheetIndex % 2 === 1 ? `${13 + Math.min(28, (bindingGutterMm / 210) * 100)}px` : undefined
-                      }}
-                    />
+                    {(() => {
+                      const baseMarginPx = marginPreset === 'none' ? 0 : marginPreset === 'narrow' ? 8 : marginPreset === 'wide' ? 22 : 13;
+                      const gutterOffsetPx = Math.min(28, (bindingGutterMm / 210) * 100);
+                      const isEven = currentSheetIndex % 2 === 1;
+                      const leftPx = baseMarginPx + (bindingGutterMm > 0 && (!mirrorGutters || !isEven) ? gutterOffsetPx : 0);
+                      const rightPx = baseMarginPx + (bindingGutterMm > 0 && mirrorGutters && isEven ? gutterOffsetPx : 0);
+
+                      return (
+                        <div
+                          className="absolute inset-0 border border-dashed border-zinc-400/40 pointer-events-none z-10"
+                          style={{
+                            marginTop: `${baseMarginPx}px`,
+                            marginBottom: `${baseMarginPx}px`,
+                            marginLeft: `${leftPx}px`,
+                            marginRight: `${rightPx}px`
+                          }}
+                        />
+                      );
+                    })()}
 
                     {/* Diagonal Watermark Preview */}
                     {watermarkText && (
