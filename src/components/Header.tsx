@@ -9,6 +9,7 @@ import {
   Image as ImageIcon,
   FileImage,
   RefreshCw,
+  Printer,
   Sun,
   Moon,
   ShieldCheck
@@ -39,7 +40,8 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'compress', label: 'Compress', icon: <Zap className="w-4 h-4" /> },
     { id: 'convert-image', label: 'PDF to Image', icon: <ImageIcon className="w-4 h-4" /> },
     { id: 'img-to-pdf', label: 'Image to PDF', icon: <FileImage className="w-4 h-4" /> },
-    { id: 'reorder', label: 'Reorder', icon: <RefreshCw className="w-4 h-4" /> }
+    { id: 'reorder', label: 'Reorder', icon: <RefreshCw className="w-4 h-4" /> },
+    { id: 'print', label: 'Print & Layout', icon: <Printer className="w-4 h-4" /> }
   ];
 
   useEffect(() => {

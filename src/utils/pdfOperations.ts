@@ -1,7 +1,7 @@
-import { PDFDocument, degrees } from 'pdf-lib';
+import { PDFDocument, degrees, rgb, StandardFonts } from 'pdf-lib';
 import JSZip from 'jszip';
 import { pdfjsLib } from './pdfWorker';
-import { PDFFileItem, ImageToPdfItem } from '../types';
+import { PDFFileItem, ImageToPdfItem, PrintFormattingOptions } from '../types';
 
 /**
  * Format bytes to readable size string
@@ -914,3 +914,584 @@ export function downloadFile(blob: Blob | Uint8Array, filename: string) {
   document.body.removeChild(link);
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
+
+/**
+ * Standard paper sizes in points (72 points = 1 inch, 2.83465 points = 1 mm)
+ */
+export const STANDARD_PAPER_SIZES: Record<string, [number, number]> = {
+  a4: [595.28, 841.89],
+  letter: [612.0, 792.0],
+  legal: [612.0, 1008.0],
+  a3: [841.89, 1190.55],
+  tabloid: [792.0, 1224.0],
+  a5: [419.53, 595.28]
+};
+
+/**
+ * Format and prepare PDF for high-precision printing with custom paper sizes,
+ * margins, binding gutters, headers, Bates page numbering, and crop marks.
+ */
+export async function formatPDFForPrinting(
+  arrayBuffer: ArrayBuffer,
+  options: PrintFormattingOptions,
+  onProgress?: (pct: number, detail: string) => void
+): Promise<Uint8Array> {
+  let sourceDoc: PDFDocument;
+
+  if (options.colorMode === 'grayscale' || options.colorMode === 'toner-save') {
+    if (onProgress) onProgress(15, 'Converting pages to monochrome...');
+    const grayscaleBytes = await convertToGrayscalePDF(arrayBuffer, 'grayscale', (p) => {
+      if (onProgress) onProgress(Math.floor(15 + p * 0.35), 'Applying monochrome filter...');
+    });
+    sourceDoc = await PDFDocument.load(grayscaleBytes, { ignoreEncryption: true });
+  } else {
+    sourceDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+  }
+
+  const targetDoc = await PDFDocument.create();
+  const font = await targetDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await targetDoc.embedFont(StandardFonts.HelveticaBold);
+
+  const totalSourcePages = sourceDoc.getPageCount();
+  
+  // 1. Determine active page indices based on range and subsets (Odd/Even)
+  let activeIndices: number[] = [];
+  if (options.pageRangeStr && options.pageRangeStr.trim()) {
+    activeIndices = parsePageRanges(options.pageRangeStr, totalSourcePages);
+  } else {
+    activeIndices = Array.from({ length: totalSourcePages }, (_, i) => i);
+  }
+
+  if (options.pageSubset === 'odd') {
+    activeIndices = activeIndices.filter((idx) => (idx + 1) % 2 !== 0);
+  } else if (options.pageSubset === 'even') {
+    activeIndices = activeIndices.filter((idx) => (idx + 1) % 2 === 0);
+  }
+
+  if (options.reverseOrder) {
+    activeIndices.reverse();
+  }
+
+  if (activeIndices.length === 0) {
+    throw new Error('No pages match the selected page range and subset filters.');
+  }
+
+  // Embed only selected pages
+  const sourcePages = sourceDoc.getPages();
+  const embeddedPagesMap: Record<number, any> = {};
+  for (const idx of activeIndices) {
+    const emb = await targetDoc.embedPage(sourcePages[idx]);
+    embeddedPagesMap[idx] = emb;
+  }
+
+  const activePages = activeIndices.map((idx) => embeddedPagesMap[idx]);
+
+  // Determine paper base dimensions
+  let [baseW, baseH] = STANDARD_PAPER_SIZES[options.paperSize] || STANDARD_PAPER_SIZES.a4;
+  if (options.paperSize === 'custom' && options.customPaperWidthMm && options.customPaperHeightMm) {
+    baseW = options.customPaperWidthMm * 2.83465;
+    baseH = options.customPaperHeightMm * 2.83465;
+  }
+
+  if (options.scaleMode === 'nup4') {
+    // 4-Up imposition: 2x2 grid per sheet
+    for (let i = 0; i < activePages.length; i += 4) {
+      const sheetNum = Math.floor(i / 4) + 1;
+      const totalSheets = Math.ceil(activePages.length / 4);
+      if (onProgress) {
+        onProgress(Math.floor(55 + (i / activePages.length) * 35), `Imposing sheet ${sheetNum} of ${totalSheets} (4-Up)...`);
+      }
+
+      // 4-Up typically uses portrait or landscape depending on orientation
+      let sheetW = baseW;
+      let sheetH = baseH;
+      if (options.orientation === 'landscape') {
+        sheetW = Math.max(baseW, baseH);
+        sheetH = Math.min(baseW, baseH);
+      } else {
+        sheetW = Math.min(baseW, baseH);
+        sheetH = Math.max(baseW, baseH);
+      }
+
+      const sheet = targetDoc.addPage([sheetW, sheetH]);
+
+      // Handle mirrored gutter for duplex
+      const isEvenSheet = sheetNum % 2 === 0;
+      const gutterLeft = options.mirrorGutters && isEvenSheet ? 0 : options.bindingGutter;
+      const gutterRight = options.mirrorGutters && isEvenSheet ? options.bindingGutter : 0;
+
+      const leftMargin = options.margins.left + gutterLeft;
+      const rightMargin = options.margins.right + gutterRight;
+      const topMargin = options.margins.top;
+      const bottomMargin = options.margins.bottom;
+
+      const availW = Math.max(20, sheetW - leftMargin - rightMargin);
+      const availH = Math.max(20, sheetH - topMargin - bottomMargin);
+      const gap = 10;
+      const cellW = (availW - gap) / 2;
+      const cellH = (availH - gap) / 2;
+
+      // 4 cells: [0,1] top row, [2,3] bottom row
+      const cells = [
+        { x: leftMargin, y: bottomMargin + cellH + gap }, // Top-Left
+        { x: leftMargin + cellW + gap, y: bottomMargin + cellH + gap }, // Top-Right
+        { x: leftMargin, y: bottomMargin }, // Bottom-Left
+        { x: leftMargin + cellW + gap, y: bottomMargin } // Bottom-Right
+      ];
+
+      for (let c = 0; c < 4; c++) {
+        if (i + c < activePages.length) {
+          const emb = activePages[i + c];
+          const scale = Math.min(cellW / emb.width, cellH / emb.height);
+          const w = emb.width * scale;
+          const h = emb.height * scale;
+          const posX = cells[c].x + (cellW - w) / 2;
+          const posY = cells[c].y + (cellH - h) / 2;
+          sheet.drawPage(emb, { x: posX, y: posY, width: w, height: h });
+
+          if (options.nupBorders) {
+            sheet.drawRectangle({
+              x: cells[c].x,
+              y: cells[c].y,
+              width: cellW,
+              height: cellH,
+              borderColor: rgb(0.7, 0.7, 0.7),
+              borderWidth: 0.5
+            });
+          }
+        }
+      }
+
+      drawPrintWatermark(sheet, sheetW, sheetH, boldFont, options);
+      drawPrintCropMarks(sheet, leftMargin, rightMargin, topMargin, bottomMargin, sheetW, sheetH, options);
+      drawPrintHeaderFooter(sheet, sheetNum, totalSheets, sheetW, sheetH, leftMargin, rightMargin, topMargin, bottomMargin, font, boldFont, options);
+    }
+  } else if (options.scaleMode === 'nup2') {
+    // 2-Up booklet / handout layout: 2 pages side-by-side on landscape sheets
+    for (let i = 0; i < activePages.length; i += 2) {
+      const sheetNum = Math.floor(i / 2) + 1;
+      const totalSheets = Math.ceil(activePages.length / 2);
+      if (onProgress) {
+        onProgress(Math.floor(55 + (i / activePages.length) * 35), `Imposing sheet ${sheetNum} of ${totalSheets} (2-Up)...`);
+      }
+
+      const sheetW = Math.max(baseW, baseH);
+      const sheetH = Math.min(baseW, baseH);
+      const sheet = targetDoc.addPage([sheetW, sheetH]);
+
+      const isEvenSheet = sheetNum % 2 === 0;
+      const gutterLeft = options.mirrorGutters && isEvenSheet ? 0 : options.bindingGutter;
+      const gutterRight = options.mirrorGutters && isEvenSheet ? options.bindingGutter : 0;
+
+      const leftMargin = options.margins.left + gutterLeft;
+      const rightMargin = options.margins.right + gutterRight;
+      const topMargin = options.margins.top;
+      const bottomMargin = options.margins.bottom;
+
+      const availW = Math.max(20, sheetW - leftMargin - rightMargin);
+      const availH = Math.max(20, sheetH - topMargin - bottomMargin);
+      const gap = 14;
+      const slotW = (availW - gap) / 2;
+
+      // Draw slot 1 (Left)
+      const page1 = activePages[i];
+      const s1 = Math.min(slotW / page1.width, availH / page1.height);
+      const w1 = page1.width * s1;
+      const h1 = page1.height * s1;
+      const x1 = leftMargin + (slotW - w1) / 2;
+      const y1 = bottomMargin + (availH - h1) / 2;
+      sheet.drawPage(page1, { x: x1, y: y1, width: w1, height: h1 });
+
+      if (options.nupBorders) {
+        sheet.drawRectangle({
+          x: leftMargin,
+          y: bottomMargin,
+          width: slotW,
+          height: availH,
+          borderColor: rgb(0.7, 0.7, 0.7),
+          borderWidth: 0.5
+        });
+      }
+
+      // Draw slot 2 (Right) if available
+      if (i + 1 < activePages.length) {
+        const page2 = activePages[i + 1];
+        const s2 = Math.min(slotW / page2.width, availH / page2.height);
+        const w2 = page2.width * s2;
+        const h2 = page2.height * s2;
+        const x2 = leftMargin + slotW + gap + (slotW - w2) / 2;
+        const y2 = bottomMargin + (availH - h2) / 2;
+        sheet.drawPage(page2, { x: x2, y: y2, width: w2, height: h2 });
+
+        if (options.nupBorders) {
+          sheet.drawRectangle({
+            x: leftMargin + slotW + gap,
+            y: bottomMargin,
+            width: slotW,
+            height: availH,
+            borderColor: rgb(0.7, 0.7, 0.7),
+            borderWidth: 0.5
+          });
+        }
+      }
+
+      drawPrintWatermark(sheet, sheetW, sheetH, boldFont, options);
+      drawPrintCropMarks(sheet, leftMargin, rightMargin, topMargin, bottomMargin, sheetW, sheetH, options);
+      drawPrintHeaderFooter(sheet, sheetNum, totalSheets, sheetW, sheetH, leftMargin, rightMargin, topMargin, bottomMargin, font, boldFont, options);
+    }
+  } else {
+    // 1 page per sheet
+    for (let i = 0; i < activePages.length; i++) {
+      const sheetNum = i + 1;
+      const totalSheets = activePages.length;
+      if (onProgress) {
+        onProgress(Math.floor(55 + (i / activePages.length) * 35), `Formatting sheet ${sheetNum} of ${totalSheets}...`);
+      }
+
+      const embPage = activePages[i];
+      let sheetW = baseW;
+      let sheetH = baseH;
+
+      if (options.paperSize === 'original') {
+        sheetW = embPage.width;
+        sheetH = embPage.height;
+      }
+
+      if (options.orientation === 'portrait') {
+        const w = Math.min(sheetW, sheetH);
+        const h = Math.max(sheetW, sheetH);
+        sheetW = w;
+        sheetH = h;
+      } else if (options.orientation === 'landscape') {
+        const w = Math.max(sheetW, sheetH);
+        const h = Math.min(sheetW, sheetH);
+        sheetW = w;
+        sheetH = h;
+      } else {
+        // Auto orientation based on page aspect ratio
+        if (embPage.width > embPage.height) {
+          sheetW = Math.max(sheetW, sheetH);
+          sheetH = Math.min(sheetW, sheetH);
+        } else {
+          sheetW = Math.min(sheetW, sheetH);
+          sheetH = Math.max(sheetW, sheetH);
+        }
+      }
+
+      const sheet = targetDoc.addPage([sheetW, sheetH]);
+
+      const isEvenSheet = sheetNum % 2 === 0;
+      const gutterLeft = options.mirrorGutters && isEvenSheet ? 0 : options.bindingGutter;
+      const gutterRight = options.mirrorGutters && isEvenSheet ? options.bindingGutter : 0;
+
+      const leftMargin = options.margins.left + gutterLeft;
+      const rightMargin = options.margins.right + gutterRight;
+      const topMargin = options.margins.top;
+      const bottomMargin = options.margins.bottom;
+
+      const availW = Math.max(10, sheetW - leftMargin - rightMargin);
+      const availH = Math.max(10, sheetH - topMargin - bottomMargin);
+
+      let scale = 1;
+      if (options.scaleMode === 'fit') {
+        scale = Math.min(availW / embPage.width, availH / embPage.height);
+      } else if (options.scaleMode === 'shrink') {
+        scale = Math.min(1, Math.min(availW / embPage.width, availH / embPage.height));
+      } else {
+        scale = 1;
+      }
+
+      const scaledW = embPage.width * scale;
+      const scaledH = embPage.height * scale;
+
+      const posX = leftMargin + (availW - scaledW) / 2;
+      const posY = bottomMargin + (availH - scaledH) / 2;
+
+      sheet.drawPage(embPage, {
+        x: posX,
+        y: posY,
+        width: scaledW,
+        height: scaledH
+      });
+
+      drawPrintWatermark(sheet, sheetW, sheetH, boldFont, options);
+      drawPrintCropMarks(sheet, leftMargin, rightMargin, topMargin, bottomMargin, sheetW, sheetH, options);
+      drawPrintHeaderFooter(sheet, sheetNum, totalSheets, sheetW, sheetH, leftMargin, rightMargin, topMargin, bottomMargin, font, boldFont, options);
+    }
+  }
+
+  if (onProgress) onProgress(95, 'Finalizing print-ready document...');
+  const finalBytes = await targetDoc.save({ useObjectStreams: false });
+  if (onProgress) onProgress(100, 'Print formatting complete!');
+  return finalBytes;
+}
+
+function drawPrintWatermark(
+  sheet: any,
+  sheetW: number,
+  sheetH: number,
+  font: any,
+  options: PrintFormattingOptions
+) {
+  if (!options.watermarkText || !options.watermarkText.trim()) return;
+
+  const text = options.watermarkText.trim();
+  const fontSize = Math.min(54, Math.max(28, sheetW / 12));
+  const textWidth = font.widthOfTextAtSize(text, fontSize);
+
+  let textColor = rgb(0.5, 0.5, 0.5);
+  if (options.watermarkColor === 'red') textColor = rgb(0.85, 0.2, 0.2);
+  if (options.watermarkColor === 'blue') textColor = rgb(0.15, 0.35, 0.85);
+
+  const opacity = options.watermarkOpacity || 0.15;
+
+  sheet.drawText(text, {
+    x: (sheetW - textWidth * 0.7) / 2,
+    y: (sheetH - textWidth * 0.7) / 2,
+    size: fontSize,
+    font,
+    color: textColor,
+    opacity,
+    rotate: degrees(45)
+  });
+}
+
+function drawPrintHeaderFooter(
+  sheet: any,
+  sheetNum: number,
+  totalSheets: number,
+  sheetW: number,
+  sheetH: number,
+  leftMargin: number,
+  rightMargin: number,
+  topMargin: number,
+  bottomMargin: number,
+  font: any,
+  boldFont: any,
+  options: PrintFormattingOptions
+) {
+  const fontSize = 8.5;
+  const textColor = rgb(0.25, 0.25, 0.25);
+  const headerY = sheetH - Math.max(14, topMargin / 2) - fontSize / 2;
+  const footerY = Math.max(12, bottomMargin / 2);
+
+  // 1. Header Left
+  if (options.headerLeft && options.headerLeft.trim()) {
+    sheet.drawText(options.headerLeft.trim(), {
+      x: leftMargin,
+      y: headerY,
+      size: fontSize,
+      font,
+      color: textColor
+    });
+  }
+
+  // 2. Header Center
+  if (options.headerCenter && options.headerCenter.trim()) {
+    const text = options.headerCenter.trim();
+    const w = boldFont.widthOfTextAtSize(text, fontSize);
+    sheet.drawText(text, {
+      x: (sheetW - w) / 2,
+      y: headerY,
+      size: fontSize,
+      font: boldFont,
+      color: textColor
+    });
+  }
+
+  // 3. Header Right
+  if (options.headerRight && options.headerRight.trim()) {
+    const text = options.headerRight.trim();
+    const w = font.widthOfTextAtSize(text, fontSize);
+    sheet.drawText(text, {
+      x: sheetW - rightMargin - w,
+      y: headerY,
+      size: fontSize,
+      font,
+      color: textColor
+    });
+  }
+
+  // 4. Footer Left
+  if (options.footerLeft && options.footerLeft.trim()) {
+    sheet.drawText(options.footerLeft.trim(), {
+      x: leftMargin,
+      y: footerY,
+      size: fontSize,
+      font,
+      color: textColor
+    });
+  }
+
+  // 5. Footer Center / Page Number / Bates Stamp
+  if (options.pageNumberPosition !== 'none') {
+    const displayNum = sheetNum + (options.startPageNumber - 1);
+    let numText = '';
+
+    if (options.pageNumberFormat === 'bates') {
+      const prefix = options.batesPrefix || 'BATES-';
+      numText = `${prefix}${String(displayNum).padStart(6, '0')}`;
+    } else if (options.pageNumberFormat === 'page-x-of-y') {
+      numText = `Page ${displayNum} of ${totalSheets + options.startPageNumber - 1}`;
+    } else if (options.pageNumberFormat === 'x-of-y') {
+      numText = `${displayNum} / ${totalSheets + options.startPageNumber - 1}`;
+    } else if (options.pageNumberFormat === 'dash-num') {
+      numText = `- ${displayNum} -`;
+    } else {
+      numText = `${displayNum}`;
+    }
+
+    const numW = font.widthOfTextAtSize(numText, fontSize);
+    let numX = (sheetW - numW) / 2;
+    let numY = footerY;
+
+    if (options.pageNumberPosition === 'bottom-right') {
+      numX = sheetW - rightMargin - numW;
+    } else if (options.pageNumberPosition === 'top-center') {
+      numY = headerY;
+    } else if (options.pageNumberPosition === 'top-right') {
+      numX = sheetW - rightMargin - numW;
+      numY = headerY;
+    }
+
+    sheet.drawText(numText, {
+      x: numX,
+      y: numY,
+      size: fontSize,
+      font,
+      color: textColor
+    });
+  }
+
+  // 6. Footer Right
+  if (options.footerRight && options.footerRight.trim()) {
+    const text = options.footerRight.trim();
+    const w = font.widthOfTextAtSize(text, fontSize);
+    sheet.drawText(text, {
+      x: sheetW - rightMargin - w,
+      y: footerY,
+      size: fontSize,
+      font,
+      color: textColor
+    });
+  }
+}
+
+function drawPrintCropMarks(
+  sheet: any,
+  left: number,
+  right: number,
+  top: number,
+  bottom: number,
+  sheetW: number,
+  sheetH: number,
+  options: PrintFormattingOptions
+) {
+  const markLen = 9;
+  const strokeColor = rgb(0.4, 0.4, 0.4);
+  const strokeWidth = 0.5;
+
+  const x1 = left;
+  const x2 = sheetW - right;
+  const y1 = bottom;
+  const y2 = sheetH - top;
+
+  if (options.cropMarks) {
+    // Corner Crop L-marks
+    sheet.drawLine({ start: { x: x1, y: y1 - markLen }, end: { x: x1, y: y1 }, color: strokeColor, thickness: strokeWidth });
+    sheet.drawLine({ start: { x: x1 - markLen, y: y1 }, end: { x: x1, y: y1 }, color: strokeColor, thickness: strokeWidth });
+
+    sheet.drawLine({ start: { x: x2, y: y1 - markLen }, end: { x: x2, y: y1 }, color: strokeColor, thickness: strokeWidth });
+    sheet.drawLine({ start: { x: x2 + markLen, y: y1 }, end: { x: x2, y: y1 }, color: strokeColor, thickness: strokeWidth });
+
+    sheet.drawLine({ start: { x: x1, y: y2 + markLen }, end: { x: x1, y: y2 }, color: strokeColor, thickness: strokeWidth });
+    sheet.drawLine({ start: { x: x1 - markLen, y: y2 }, end: { x: x1, y: y2 }, color: strokeColor, thickness: strokeWidth });
+
+    sheet.drawLine({ start: { x: x2, y: y2 + markLen }, end: { x: x2, y: y2 }, color: strokeColor, thickness: strokeWidth });
+    sheet.drawLine({ start: { x: x2 + markLen, y: y2 }, end: { x: x2, y: y2 }, color: strokeColor, thickness: strokeWidth });
+  }
+
+  // Registration Marks (Crosshair targets centered outside margins)
+  if (options.registrationMarks) {
+    const regR = 4;
+    const midX = sheetW / 2;
+    const midY = sheetH / 2;
+
+    // Top Registration
+    sheet.drawCircle({ x: midX, y: sheetH - 8, size: regR, borderColor: strokeColor, borderWidth: strokeWidth });
+    sheet.drawLine({ start: { x: midX - 7, y: sheetH - 8 }, end: { x: midX + 7, y: sheetH - 8 }, color: strokeColor, thickness: strokeWidth });
+    sheet.drawLine({ start: { x: midX, y: sheetH - 15 }, end: { x: midX, y: sheetH - 1 }, color: strokeColor, thickness: strokeWidth });
+
+    // Bottom Registration
+    sheet.drawCircle({ x: midX, y: 8, size: regR, borderColor: strokeColor, borderWidth: strokeWidth });
+    sheet.drawLine({ start: { x: midX - 7, y: 8 }, end: { x: midX + 7, y: 8 }, color: strokeColor, thickness: strokeWidth });
+    sheet.drawLine({ start: { x: midX, y: 1 }, end: { x: midX, y: 15 }, color: strokeColor, thickness: strokeWidth });
+  }
+
+  // Pre-press CMYK / Grayscale density patch bar
+  if (options.colorBars) {
+    const barW = 8;
+    const barH = 5;
+    const startX = (sheetW - 7 * (barW + 2)) / 2;
+    const patchY = 3;
+    const colors = [
+      rgb(0, 0, 0),       // Black
+      rgb(0.2, 0.2, 0.2), // Dark Gray
+      rgb(0.5, 0.5, 0.5), // Mid Gray
+      rgb(0.8, 0.8, 0.8), // Light Gray
+      rgb(0, 0.8, 0.9),   // Cyan
+      rgb(0.9, 0, 0.8),   // Magenta
+      rgb(1, 0.9, 0)      // Yellow
+    ];
+
+    colors.forEach((col, idx) => {
+      sheet.drawRectangle({
+        x: startX + idx * (barW + 2),
+        y: patchY,
+        width: barW,
+        height: barH,
+        color: col
+      });
+    });
+  }
+}
+
+/**
+ * Open browser's native print preview dialog with PDF blob in hidden iframe
+ */
+export function printPDFBlob(pdfBytes: Uint8Array | Blob) {
+  const blob = pdfBytes instanceof Blob ? pdfBytes : new Blob([pdfBytes as Uint8Array<ArrayBuffer>], { type: 'application/pdf' });
+  const blobUrl = URL.createObjectURL(blob);
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.style.opacity = '0';
+  iframe.src = blobUrl;
+  document.body.appendChild(iframe);
+
+  iframe.onload = () => {
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } catch (e) {
+      console.warn('Native iframe print trigger failed:', e);
+      // Fallback: open in new tab for print
+      const win = window.open(blobUrl, '_blank');
+      win?.focus();
+      win?.print();
+    }
+    setTimeout(() => {
+      try {
+        document.body.removeChild(iframe);
+      } catch {
+        // ignore
+      }
+      URL.revokeObjectURL(blobUrl);
+    }, 60000);
+  };
+}
+

@@ -8,6 +8,7 @@ import { CompressTool } from './components/CompressTool';
 import { ImageConvertTool } from './components/ImageConvertTool';
 import { ImgToPdfTool } from './components/ImgToPdfTool';
 import { PageReorderTool } from './components/PageReorderTool';
+import { PrintTool } from './components/PrintTool';
 import { ToastContainer } from './components/Toast';
 import { ProcessingOverlay } from './components/ProcessingOverlay';
 import { ToolTab, ThemeMode, ProcessingState, ToastMessage } from './types';
@@ -124,6 +125,13 @@ export default function App() {
 
           {activeTab === 'reorder' && (
             <PageReorderTool
+              onProcessingChange={setProcessingState}
+              addToast={addToast}
+            />
+          )}
+
+          {activeTab === 'print' && (
+            <PrintTool
               onProcessingChange={setProcessingState}
               addToast={addToast}
             />
