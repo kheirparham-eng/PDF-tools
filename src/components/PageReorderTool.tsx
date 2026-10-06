@@ -273,17 +273,19 @@ export const PageReorderTool: React.FC<PageReorderToolProps> = ({
     <div className="space-y-6">
       
       {/* Intro Banner */}
-      <div className="glass-card rounded-2xl p-6 relative overflow-hidden transition-all">
-        <div className="absolute -top-12 -right-12 w-48 h-48 bg-amber-500/15 rounded-full blur-2xl pointer-events-none" />
+      <div className="ios-glass rounded-3xl p-6 sm:p-7 relative overflow-hidden transition-all duration-300">
+        <div className="ios-glass-sheen" />
+        <div className="liquid-sheen-sweep" />
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-zinc-400/10 dark:bg-white/[0.03] rounded-full blur-3xl pointer-events-none" />
         <div className="flex items-start space-x-4 relative z-10">
-          <div className="p-3 bg-gradient-to-tr from-amber-600 to-orange-600 text-white rounded-xl shrink-0 shadow-lg shadow-amber-500/30 border border-white/30">
-            <RefreshCw className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-zinc-800 to-black dark:from-zinc-100 dark:to-zinc-300 text-white dark:text-zinc-950 flex items-center justify-center shrink-0 shadow-lg border border-white/20 dark:border-white/40 ring-1 ring-black/5">
+            <RefreshCw className="w-6 h-6 drop-shadow-sm" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-zinc-950 dark:text-white">
               Page Reorder & Organizer
             </h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+            <p className="mt-1 text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed font-normal">
               Drag and drop pages to rearrange their sequence, duplicate pages, rotate orientations, or delete unwanted pages from your document.
             </p>
           </div>
@@ -303,17 +305,18 @@ export const PageReorderTool: React.FC<PageReorderToolProps> = ({
         <div className="space-y-6">
           
           {/* File Overview Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 gap-4 shadow-sm">
-            <div className="flex items-center space-x-3">
-              <div className="p-2.5 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
-                <FileText className="w-6 h-6" />
+          <div className="ios-glass rounded-2xl p-4 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="ios-glass-sheen" />
+            <div className="flex items-center space-x-3.5 min-w-0 relative z-10">
+              <div className="w-10 h-10 rounded-xl ios-pill flex items-center justify-center text-zinc-900 dark:text-zinc-100 shrink-0">
+                <FileText className="w-5 h-5" />
               </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-zinc-950 dark:text-white truncate">
                   {file.name}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Current page count: {pages.length} pages • {formatFileSize(file.size)}
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-normal">
+                  <span className="font-mono tabular-nums">{pages.length}</span> pages · <span className="font-mono tabular-nums">{formatFileSize(file.size)}</span>
                 </p>
               </div>
             </div>
@@ -326,10 +329,36 @@ export const PageReorderTool: React.FC<PageReorderToolProps> = ({
                 setFile(null);
                 setPages([]);
               }}
-              className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-600 text-slate-600 dark:text-slate-300 transition-colors flex items-center space-x-1.5 self-start sm:self-auto"
+              className="text-xs font-medium px-3 py-1.5 rounded-xl ios-btn-secondary text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white flex items-center space-x-1.5 self-start sm:self-auto cursor-pointer relative z-10"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
               <span>Choose Different PDF</span>
+            </button>
+          </div>
+
+          {/* Export Action Bar - Positioned Above PDF Page Grid */}
+          <div className="ios-glass rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden">
+            <div className="ios-glass-sheen" />
+            <div className="liquid-sheen-sweep" />
+            <div className="w-full sm:w-auto space-y-1.5 relative z-10">
+              <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                Output Filename
+              </label>
+              <input
+                type="text"
+                value={outputFilename}
+                onChange={(e) => setOutputFilename(e.target.value)}
+                className="w-full sm:w-80 px-3.5 py-2 text-xs font-medium rounded-xl ios-input text-zinc-900 dark:text-zinc-100 focus:outline-none"
+              />
+            </div>
+
+            <button
+              onClick={handleSave}
+              id="save-reordered-pdf-btn"
+              className="liquid-export-btn relative z-10"
+            >
+              <Download className="w-4 h-4" />
+              <span>Save Reordered PDF ({pages.length} pages)</span>
             </button>
           </div>
 
@@ -342,17 +371,17 @@ export const PageReorderTool: React.FC<PageReorderToolProps> = ({
                 onDragStart={() => handleDragStart(index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragEnd={handleDragEnd}
-                className={`group p-3 rounded-2xl border bg-white dark:bg-slate-800 transition-all flex flex-col justify-between ${
+                className={`group p-3.5 rounded-2xl transition-all duration-200 flex flex-col justify-between ${
                   draggedIndex === index
-                    ? 'border-amber-500 ring-2 ring-amber-500/30 shadow-lg'
-                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                    ? 'border-zinc-400 dark:border-zinc-600 ring-4 ring-black/10 dark:ring-white/20 shadow-2xl bg-zinc-200/50 dark:bg-white/10 scale-[1.01]'
+                    : 'ios-glass hover:scale-[1.008] hover:shadow-xl'
                 }`}
               >
                 {/* Header Actions */}
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Pos #{index + 1}
-                    <span className="text-[10px] text-slate-400 font-normal ml-1">
+                  <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Pos <span className="font-mono tabular-nums">#{index + 1}</span>
+                    <span className="text-[11px] text-zinc-400 font-normal ml-1 font-mono tabular-nums">
                       (Pg {p.pageNumber})
                     </span>
                   </span>
@@ -360,21 +389,21 @@ export const PageReorderTool: React.FC<PageReorderToolProps> = ({
                   <div className="flex items-center space-x-1">
                     <button
                       onClick={() => rotatePage(p.id)}
-                      className="p-1 rounded text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                      className="p-1.5 rounded-lg ios-btn-secondary text-zinc-500 hover:text-zinc-800 dark:hover:text-white cursor-pointer"
                       title="Rotate 90°"
                     >
                       <RotateCw className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => duplicatePage(index)}
-                      className="p-1 rounded text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                      className="p-1.5 rounded-lg ios-btn-secondary text-zinc-500 hover:text-zinc-800 dark:hover:text-white cursor-pointer"
                       title="Duplicate Page"
                     >
                       <Copy className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => deletePage(p.id)}
-                      className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950"
+                      className="p-1.5 rounded-lg ios-btn-secondary text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white cursor-pointer"
                       title="Delete Page"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -383,16 +412,16 @@ export const PageReorderTool: React.FC<PageReorderToolProps> = ({
                 </div>
 
                 {/* Thumbnail Canvas */}
-                <div className="aspect-[3/4] bg-slate-100 dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                <div className="aspect-[3/4] ios-glass-subtle rounded-xl overflow-hidden border border-black/5 dark:border-white/10 flex items-center justify-center shadow-inner">
                   {p.thumbnailUrl ? (
                     <img
                       src={p.thumbnailUrl}
                       alt={`Page ${p.pageNumber}`}
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain transition-transform duration-200"
                       style={{ transform: `rotate(${p.rotation}deg)` }}
                     />
                   ) : (
-                    <div className="animate-pulse flex flex-col items-center justify-center text-slate-400 text-xs">
+                    <div className="animate-pulse flex flex-col items-center justify-center text-zinc-400 text-xs">
                       <FileText className="w-6 h-6 mb-1" />
                       <span>Loading...</span>
                     </div>
@@ -400,18 +429,18 @@ export const PageReorderTool: React.FC<PageReorderToolProps> = ({
                 </div>
 
                 {/* Footer Movement Arrows */}
-                <div className="mt-2 flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700 text-xs">
+                <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-black/5 dark:border-white/5 text-xs">
                   <button
                     onClick={() => movePage(index, 'left')}
                     disabled={index === 0}
-                    className="p-1 text-slate-400 hover:text-slate-800 dark:hover:text-white disabled:opacity-20 flex items-center space-x-1"
+                    className="p-1.5 rounded-lg ios-btn-secondary text-zinc-500 hover:text-zinc-800 dark:hover:text-white disabled:opacity-20 flex items-center space-x-1 cursor-pointer"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                     <span>Left</span>
                   </button>
 
                   {p.rotation !== 0 && (
-                    <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                    <span className="text-[11px] font-semibold text-zinc-900 dark:text-zinc-100 font-mono">
                       {p.rotation}°
                     </span>
                   )}
@@ -419,7 +448,7 @@ export const PageReorderTool: React.FC<PageReorderToolProps> = ({
                   <button
                     onClick={() => movePage(index, 'right')}
                     disabled={index === pages.length - 1}
-                    className="p-1 text-slate-400 hover:text-slate-800 dark:hover:text-white disabled:opacity-20 flex items-center space-x-1"
+                    className="p-1.5 rounded-lg ios-btn-secondary text-zinc-500 hover:text-zinc-800 dark:hover:text-white disabled:opacity-20 flex items-center space-x-1 cursor-pointer"
                   >
                     <span>Right</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -428,30 +457,6 @@ export const PageReorderTool: React.FC<PageReorderToolProps> = ({
 
               </div>
             ))}
-          </div>
-
-          {/* Bottom Controls Bar */}
-          <div className="glass-card rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="w-full sm:w-auto space-y-1">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Output Filename
-              </label>
-              <input
-                type="text"
-                value={outputFilename}
-                onChange={(e) => setOutputFilename(e.target.value)}
-                className="w-full sm:w-80 px-3 py-2 text-xs font-semibold rounded-xl glass-input text-slate-800 dark:text-slate-100 focus:outline-none"
-              />
-            </div>
-
-            <button
-              onClick={handleSave}
-              id="save-reordered-pdf-btn"
-              className="w-full sm:w-auto px-6 py-3 rounded-xl glass-btn-primary text-white font-bold text-sm flex items-center justify-center space-x-2 cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-              <span>Save Reordered PDF ({pages.length} pages)</span>
-            </button>
           </div>
 
         </div>

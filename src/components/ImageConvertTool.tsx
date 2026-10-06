@@ -175,18 +175,20 @@ export const ImageConvertTool: React.FC<ImageConvertToolProps> = ({
     <div className="space-y-6">
       
       {/* Intro Banner */}
-      <div className="glass-card rounded-2xl p-6 relative overflow-hidden transition-all">
-        <div className="absolute -top-12 -right-12 w-48 h-48 bg-purple-500/15 rounded-full blur-2xl pointer-events-none" />
+      <div className="ios-glass rounded-3xl p-6 sm:p-7 relative overflow-hidden transition-all duration-300">
+        <div className="ios-glass-sheen" />
+        <div className="liquid-sheen-sweep" />
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-[#BF5AF2]/10 dark:bg-[#BF5AF2]/15 rounded-full blur-3xl pointer-events-none" />
         <div className="flex items-start space-x-4 relative z-10">
-          <div className="p-3 bg-gradient-to-tr from-purple-600 to-pink-600 text-white rounded-xl shrink-0 shadow-lg shadow-purple-500/30 border border-white/30">
-            <ImageIcon className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-[#BF5AF2] to-[#8E44AD] text-white flex items-center justify-center shrink-0 shadow-lg shadow-[#BF5AF2]/25 border border-white/40 ring-1 ring-black/5">
+            <ImageIcon className="w-6 h-6 drop-shadow-sm" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
               PDF to Image Converter
             </h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              Convert PDF pages into high-resolution PNG or JPEG images. Download individual pages or export all pages together as a ZIP archive.
+            <p className="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+              Convert PDF pages into high-resolution PNG or JPEG raster images. Download individual pages or export all pages together as an archived ZIP bundle.
             </p>
           </div>
         </div>
@@ -198,24 +200,25 @@ export const ImageConvertTool: React.FC<ImageConvertToolProps> = ({
           acceptTypes=".pdf"
           multiple={false}
           title="Drop a PDF file to convert to images"
-          description="Upload a PDF document to render pages into image format"
+          description="Select a PDF document from your device to render pages into image format"
           id="convert-image-dropzone"
         />
       ) : (
         <div className="space-y-6">
           
           {/* File Overview Bar */}
-          <div className="glass-card rounded-2xl p-4 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2.5 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/30">
-                <FileText className="w-6 h-6" />
+          <div className="ios-glass rounded-2xl p-4 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="ios-glass-sheen" />
+            <div className="flex items-center space-x-3.5 min-w-0 relative z-10">
+              <div className="w-10 h-10 rounded-xl ios-pill flex items-center justify-center text-[#BF5AF2] shrink-0">
+                <FileText className="w-5 h-5" />
               </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                   {file.name}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {file.pageCount} pages • {formatFileSize(file.size)}
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
+                  <span className="font-mono tabular-nums">{file.pageCount}</span> pages · <span className="font-mono tabular-nums">{formatFileSize(file.size)}</span>
                 </p>
               </div>
             </div>
@@ -227,17 +230,19 @@ export const ImageConvertTool: React.FC<ImageConvertToolProps> = ({
                 setConvertedImages(null);
                 setZipBlob(null);
               }}
-              className="text-xs font-semibold px-3 py-2 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-all flex items-center space-x-1.5 self-start sm:self-auto cursor-pointer"
+              className="text-xs font-medium px-3 py-1.5 rounded-xl ios-btn-secondary text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white flex items-center space-x-1.5 self-start sm:self-auto cursor-pointer relative z-10"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
               <span>Choose Different PDF</span>
             </button>
           </div>
 
           {/* Options Toolbar */}
-          <div className="glass-card rounded-2xl p-6 space-y-5">
-            <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-              <Sliders className="w-4 h-4 text-purple-500" />
+          <div className="ios-glass rounded-3xl p-6 sm:p-7 space-y-5 relative overflow-hidden">
+            <div className="ios-glass-sheen" />
+            <div className="liquid-sheen-sweep" />
+            <h4 className="text-sm font-semibold text-zinc-950 dark:text-white flex items-center space-x-2 relative z-10">
+              <Sliders className="w-4 h-4 text-zinc-800 dark:text-zinc-200" />
               <span>Image Options</span>
             </h4>
 
@@ -245,42 +250,42 @@ export const ImageConvertTool: React.FC<ImageConvertToolProps> = ({
               
               {/* Output Format */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Format
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Target Format
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="p-1 rounded-2xl ios-segmented-trough grid grid-cols-2 gap-1">
                   <button
                     onClick={() => setFormat('png')}
-                    className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                    className={`py-1.5 px-3 text-xs font-medium rounded-xl transition-all duration-200 cursor-pointer ${
                       format === 'png'
-                        ? 'bg-purple-600 border-purple-600 text-white shadow-sm'
-                        : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                        ? 'ios-segmented-active'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     PNG (Lossless)
                   </button>
                   <button
                     onClick={() => setFormat('jpeg')}
-                    className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                    className={`py-1.5 px-3 text-xs font-medium rounded-xl transition-all duration-200 cursor-pointer ${
                       format === 'jpeg'
-                        ? 'bg-purple-600 border-purple-600 text-white shadow-sm'
-                        : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                        ? 'ios-segmented-active'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
-                    JPEG (High Quality)
+                    JPEG (Photo)
                   </button>
                 </div>
               </div>
 
               {/* Quality Resolution Scale */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Image Resolution
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Raster Resolution
                 </label>
                 <select
                   value={scale}
                   onChange={(e) => setScale(parseFloat(e.target.value))}
-                  className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3.5 py-2 text-xs font-medium rounded-xl ios-input text-slate-800 dark:text-slate-100 focus:outline-none cursor-pointer"
                 >
                   <option value={1.0}>Standard (150 DPI)</option>
                   <option value={1.5}>Medium High (225 DPI - Recommended)</option>
@@ -290,7 +295,7 @@ export const ImageConvertTool: React.FC<ImageConvertToolProps> = ({
 
               {/* Page Range Input */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Pages to Convert
                 </label>
                 <input
@@ -298,7 +303,7 @@ export const ImageConvertTool: React.FC<ImageConvertToolProps> = ({
                   placeholder={`1-${file.pageCount}`}
                   value={pageRange}
                   onChange={(e) => setPageRange(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3.5 py-2 text-xs font-mono rounded-xl ios-input text-slate-800 dark:text-slate-100 focus:outline-none"
                 />
               </div>
 
@@ -308,7 +313,7 @@ export const ImageConvertTool: React.FC<ImageConvertToolProps> = ({
               <button
                 onClick={handleConvert}
                 id="convert-image-btn"
-                className="w-full sm:w-auto px-6 py-3 rounded-xl glass-btn-primary text-white font-bold text-sm flex items-center justify-center space-x-2 cursor-pointer"
+                className="liquid-export-btn w-full sm:w-auto"
               >
                 <ImageIcon className="w-4 h-4" />
                 <span>Convert Pages to {format.toUpperCase()}</span>
@@ -320,31 +325,31 @@ export const ImageConvertTool: React.FC<ImageConvertToolProps> = ({
           {/* Converted Results Section */}
           {convertedImages && convertedImages.length > 0 && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
+                <h3 className="text-sm font-semibold text-zinc-950 dark:text-white flex items-center space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-zinc-900 dark:text-zinc-100" />
                   <span>Converted {convertedImages.length} Images</span>
                 </h3>
 
                 {zipBlob && (
                   <button
                     onClick={downloadAllZip}
-                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md shadow-purple-600/20 flex items-center space-x-2 cursor-pointer"
+                    className="liquid-export-btn text-xs py-2 px-5"
                   >
                     <FileArchive className="w-4 h-4" />
-                    <span>Download All as ZIP</span>
+                    <span>Download All (ZIP)</span>
                   </button>
                 )}
               </div>
 
               {/* Grid of Converted Image Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
                 {convertedImages.map((img) => (
                   <div
                     key={img.pageNumber}
-                    className="group rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                    className="group rounded-2xl ios-glass p-3 shadow-md hover:shadow-xl transition-all duration-200 flex flex-col justify-between"
                   >
-                    <div className="aspect-[3/4] bg-slate-100 dark:bg-slate-900 rounded-xl overflow-hidden mb-3 border border-slate-200/60 dark:border-slate-700/60">
+                    <div className="aspect-[3/4] ios-glass-subtle rounded-xl overflow-hidden mb-3 border border-black/5 dark:border-white/10 shadow-inner flex items-center justify-center">
                       <img
                         src={img.dataUrl}
                         alt={`Page ${img.pageNumber}`}
@@ -353,16 +358,16 @@ export const ImageConvertTool: React.FC<ImageConvertToolProps> = ({
                     </div>
 
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      <div className="flex items-center justify-between text-xs font-medium text-slate-700 dark:text-slate-300">
                         <span>Page {img.pageNumber}</span>
-                        <span className="text-[10px] text-slate-400 font-normal">
+                        <span className="text-[10px] text-slate-400 font-mono tabular-nums">
                           {formatFileSize(img.blob.size)}
                         </span>
                       </div>
 
                       <button
                         onClick={() => downloadSingleImage(img)}
-                        className="w-full py-1.5 px-3 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-purple-50 dark:hover:bg-purple-950/60 hover:text-purple-600 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center space-x-1 transition-colors cursor-pointer"
+                        className="w-full py-1.5 px-3 rounded-xl ios-btn-secondary text-xs font-medium flex items-center justify-center space-x-1 cursor-pointer"
                       >
                         <Download className="w-3.5 h-3.5" />
                         <span>Download</span>

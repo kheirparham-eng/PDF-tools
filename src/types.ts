@@ -1,4 +1,4 @@
-export type ToolTab = 'merge' | 'split' | 'grayscale' | 'compress' | 'convert-image' | 'img-to-pdf' | 'reorder';
+export type ToolTab = 'dashboard' | 'merge' | 'split' | 'grayscale' | 'compress' | 'convert-image' | 'img-to-pdf' | 'reorder';
 
 export type ThemeMode = 'dark' | 'light';
 

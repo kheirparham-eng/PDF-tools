@@ -13,6 +13,7 @@ import confetti from 'canvas-confetti';
 import { PDFFileItem, ProcessingState, ToastMessage } from '../types';
 import { getPDFInfo, convertToGrayscalePDF, formatFileSize, downloadFile } from '../utils/pdfOperations';
 import { DropZone } from './DropZone';
+import { IrisTickSlider } from './IrisTickSlider';
 
 interface GrayscaleToolProps {
   onProcessingChange: (state: ProcessingState) => void;
@@ -125,18 +126,20 @@ export const GrayscaleTool: React.FC<GrayscaleToolProps> = ({ onProcessingChange
     <div className="space-y-6">
       
       {/* Intro Glass Banner */}
-      <div className="glass-card rounded-2xl p-6 relative overflow-hidden transition-all">
-        <div className="absolute -top-12 -right-12 w-48 h-48 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
+      <div className="ios-glass rounded-3xl p-6 sm:p-7 relative overflow-hidden transition-all duration-300">
+        <div className="ios-glass-sheen" />
+        <div className="liquid-sheen-sweep" />
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-zinc-400/10 dark:bg-white/[0.03] rounded-full blur-3xl pointer-events-none" />
         <div className="flex items-start space-x-4 relative z-10">
-          <div className="p-3 bg-gradient-to-tr from-slate-800 to-slate-900 text-white rounded-xl shrink-0 shadow-lg shadow-slate-900/20 border border-white/20">
-            <Palette className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-zinc-800 to-black dark:from-zinc-100 dark:to-zinc-300 text-white dark:text-zinc-950 flex items-center justify-center shrink-0 shadow-lg border border-white/20 dark:border-white/40 ring-1 ring-black/5">
+            <Palette className="w-6 h-6 drop-shadow-sm" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              Grayscale / B&W Converter
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-zinc-950 dark:text-white">
+              Color to Grayscale & B&W
             </h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              Convert full-color PDF documents into crisp black & white or grayscale. Reduces toner costs for printing, improves readability, and gives documents a sleek monochrome finish.
+            <p className="mt-1 text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed font-normal">
+              Convert full-color PDF documents into black & white or neutral grayscale. Reduces printing toner, sharpens high-contrast text, and creates a sleek monochrome presentation.
             </p>
           </div>
         </div>
@@ -148,17 +151,18 @@ export const GrayscaleTool: React.FC<GrayscaleToolProps> = ({ onProcessingChange
           onFilesSelected={handleFilesSelected}
           acceptTypes=".pdf"
           multiple={false}
-          title="Drop PDF to Convert to Grayscale / B&W"
-          description="Select a PDF file to strip color data and apply monochrome filters"
+          title="Drop PDF to Convert to Monochrome"
+          description="Select a document to strip color data and apply optical grayscale filters"
           id="grayscale-dropzone"
         />
       ) : (
         <div className="space-y-6">
           
           {/* File Card */}
-          <div className="glass-card rounded-2xl p-6 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center space-x-4 w-full md:w-auto">
-              <div className="w-16 h-20 rounded-xl bg-slate-900/10 dark:bg-slate-900/60 border border-white/30 overflow-hidden shrink-0 flex items-center justify-center shadow-md">
+          <div className="ios-glass rounded-3xl p-5 sm:p-6 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="ios-glass-sheen" />
+            <div className="flex items-center space-x-4 w-full md:w-auto relative z-10">
+              <div className="w-14 h-18 rounded-2xl ios-glass-subtle overflow-hidden shrink-0 flex items-center justify-center shadow-inner">
                 {pdfFile.thumbnailUrl ? (
                   <img
                     src={pdfFile.thumbnailUrl}
@@ -166,125 +170,153 @@ export const GrayscaleTool: React.FC<GrayscaleToolProps> = ({ onProcessingChange
                     className="w-full h-full object-cover filter grayscale"
                   />
                 ) : (
-                  <FileText className="w-8 h-8 text-slate-500" />
+                  <FileText className="w-7 h-7 text-slate-400" />
                 )}
               </div>
 
               <div>
                 <div className="flex items-center space-x-2">
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white truncate max-w-sm">
+                  <h3 className="text-sm font-semibold text-zinc-950 dark:text-white truncate max-w-sm">
                     {pdfFile.name}
                   </h3>
-                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-medium ios-pill text-zinc-800 dark:text-zinc-200">
                     Ready
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {pdfFile.pageCount} pages • {formatFileSize(pdfFile.size)}
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 font-normal">
+                  <span className="font-mono tabular-nums">{pdfFile.pageCount}</span> pages · <span className="font-mono tabular-nums">{formatFileSize(pdfFile.size)}</span>
                 </p>
               </div>
             </div>
 
             <button
               onClick={() => setPdfFile(null)}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-all flex items-center space-x-1.5 self-end md:self-center cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-medium ios-btn-secondary text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white flex items-center space-x-1.5 self-end md:self-center cursor-pointer relative z-10"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
               <span>Change PDF</span>
             </button>
           </div>
 
+          {/* Export Action Bar - Positioned Above PDF Settings */}
+          <div className="ios-glass rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden">
+            <div className="ios-glass-sheen" />
+            <div className="liquid-sheen-sweep" />
+            <div className="space-y-1.5 w-full sm:w-80 relative z-10">
+              <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                Target Filename
+              </label>
+              <input
+                type="text"
+                value={outputFilename}
+                onChange={(e) => setOutputFilename(e.target.value)}
+                className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl ios-input text-zinc-900 dark:text-zinc-100 focus:outline-none"
+              />
+            </div>
+
+            <button
+              onClick={handleConvert}
+              id="convert-grayscale-btn"
+              className="liquid-export-btn relative z-10"
+            >
+              <Download className="w-4 h-4" />
+              <span>Convert to B&W & Download</span>
+            </button>
+          </div>
+
           {/* Configuration Panel */}
-          <div className="glass-card rounded-2xl p-6 space-y-6">
-            <div className="flex items-center space-x-2 border-b border-slate-200/50 dark:border-slate-800/50 pb-4">
-              <Sliders className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Monochrome Mode Options
+          <div className="ios-glass rounded-3xl p-6 sm:p-7 space-y-6 relative overflow-hidden">
+            <div className="ios-glass-sheen" />
+            <div className="liquid-sheen-sweep" />
+            <div className="flex items-center space-x-2 border-b border-black/5 dark:border-white/5 pb-4 relative z-10">
+              <Sliders className="w-4 h-4 text-zinc-800 dark:text-zinc-200" />
+              <h3 className="text-sm font-semibold text-zinc-950 dark:text-white">
+                Monochrome Mode Style
               </h3>
             </div>
 
             {/* Mode Selection Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <button
                 onClick={() => setFilterMode('grayscale')}
-                className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
+                className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer ${
                   filterMode === 'grayscale'
-                    ? 'bg-indigo-600/15 border-indigo-500/80 ring-2 ring-indigo-500/30 shadow-lg'
-                    : 'glass-card hover:border-slate-400 dark:hover:border-slate-600'
+                    ? 'ios-glass border-zinc-400 dark:border-zinc-500 ring-2 ring-black/10 dark:ring-white/20 shadow-xl scale-[1.01]'
+                    : 'ios-glass-subtle hover:scale-[1.005]'
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-sm text-slate-900 dark:text-white">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-semibold text-xs sm:text-sm text-zinc-950 dark:text-white">
                     Standard Grayscale
                   </span>
-                  {filterMode === 'grayscale' && <CheckCircle2 className="w-4 h-4 text-indigo-500" />}
+                  {filterMode === 'grayscale' && <CheckCircle2 className="w-4 h-4 text-zinc-900 dark:text-zinc-100" />}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Preserves smooth tonal shades and original document balance.
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-normal leading-relaxed">
+                  Preserves smooth tonal midtones and original photographic luminance.
                 </p>
               </button>
 
               <button
                 onClick={() => setFilterMode('contrast')}
-                className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
+                className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer ${
                   filterMode === 'contrast'
-                    ? 'bg-indigo-600/15 border-indigo-500/80 ring-2 ring-indigo-500/30 shadow-lg'
-                    : 'glass-card hover:border-slate-400 dark:hover:border-slate-600'
+                    ? 'ios-glass border-zinc-400 dark:border-zinc-500 ring-2 ring-black/10 dark:ring-white/20 shadow-xl scale-[1.01]'
+                    : 'ios-glass-subtle hover:scale-[1.005]'
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-sm text-slate-900 dark:text-white">
-                    High Contrast B&W
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-semibold text-xs sm:text-sm text-zinc-950 dark:text-white">
+                    High-Contrast B&W
                   </span>
-                  {filterMode === 'contrast' && <CheckCircle2 className="w-4 h-4 text-indigo-500" />}
+                  {filterMode === 'contrast' && <CheckCircle2 className="w-4 h-4 text-zinc-900 dark:text-zinc-100" />}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Pure black and white threshold. Ideal for scanned text and invoices.
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-normal leading-relaxed">
+                  High contrast thresholding. Optimal for text scans, forms, and receipts.
                 </p>
               </button>
 
               <button
                 onClick={() => setFilterMode('sepia')}
-                className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
+                className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer ${
                   filterMode === 'sepia'
-                    ? 'bg-indigo-600/15 border-indigo-500/80 ring-2 ring-indigo-500/30 shadow-lg'
-                    : 'glass-card hover:border-slate-400 dark:hover:border-slate-600'
+                    ? 'ios-glass border-zinc-400 dark:border-zinc-500 ring-2 ring-black/10 dark:ring-white/20 shadow-xl scale-[1.01]'
+                    : 'ios-glass-subtle hover:scale-[1.005]'
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-sm text-slate-900 dark:text-white">
-                    Vintage Sepia
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-semibold text-xs sm:text-sm text-zinc-950 dark:text-white">
+                    Warm Sepia Tone
                   </span>
-                  {filterMode === 'sepia' && <CheckCircle2 className="w-4 h-4 text-indigo-500" />}
+                  {filterMode === 'sepia' && <CheckCircle2 className="w-4 h-4 text-zinc-900 dark:text-zinc-100" />}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Warm antique monochrome tone for artistic documents.
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-normal leading-relaxed">
+                  Warm antique monochrome tone for portfolio and literary documents.
                 </p>
               </button>
             </div>
 
-            {/* Filename & Submit */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-slate-200/50 dark:border-slate-800/50">
-              <div className="space-y-1 w-full sm:w-80">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Output Filename
-                </label>
-                <input
-                  type="text"
-                  value={outputFilename}
-                  onChange={(e) => setOutputFilename(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl glass-input text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+            {/* Contrast Depth Tick Slider */}
+            <div className="p-4 rounded-2xl ios-glass-subtle space-y-2">
+              <div className="flex items-center justify-between text-xs font-medium text-white/90">
+                <span>Luminance & Contrast Scale</span>
+                <span className="font-mono text-[11px] text-white/80">
+                  {filterMode === 'contrast' ? 'High Contrast (90%)' : filterMode === 'sepia' ? 'Warm Antique (45%)' : 'Balanced (60%)'}
+                </span>
               </div>
-
-              <button
-                onClick={handleConvert}
-                id="convert-grayscale-btn"
-                className="glass-btn-primary px-6 py-3 rounded-xl text-white font-bold text-sm flex items-center justify-center space-x-2 cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                <span>Convert to B&W & Download</span>
-              </button>
+              <IrisTickSlider
+                value={filterMode === 'contrast' ? 90 : filterMode === 'sepia' ? 45 : 60}
+                onChange={(val) => {
+                  if (val > 75) setFilterMode('contrast');
+                  else if (val < 50) setFilterMode('sepia');
+                  else setFilterMode('grayscale');
+                }}
+                min={0}
+                max={100}
+                minLabel="Warm"
+                midLabel="Neutral"
+                maxLabel="High Contrast"
+                totalTicks={22}
+              />
             </div>
 
           </div>

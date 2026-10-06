@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
+import { Dashboard } from './components/Dashboard';
 import { MergeTool } from './components/MergeTool';
 import { SplitTool } from './components/SplitTool';
 import { GrayscaleTool } from './components/GrayscaleTool';
@@ -10,10 +11,11 @@ import { PageReorderTool } from './components/PageReorderTool';
 import { ToastContainer } from './components/Toast';
 import { ProcessingOverlay } from './components/ProcessingOverlay';
 import { ToolTab, ThemeMode, ProcessingState, ToastMessage } from './types';
-import { ShieldCheck, Heart, Sparkles } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
+import { IrisBackground } from './components/IrisBackground';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<ToolTab>('merge');
+  const [activeTab, setActiveTab] = useState<ToolTab>('dashboard');
   const [theme, setTheme] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem('pdf_suite_theme');
     if (saved === 'dark' || saved === 'light') return saved;
@@ -52,19 +54,12 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans relative overflow-hidden transition-colors duration-300">
+    <div className="min-h-screen text-zinc-900 dark:text-zinc-100 flex flex-col relative overflow-x-hidden transition-colors duration-500 selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-zinc-900 font-sans">
       
-      {/* Liquid Ambient Glowing Background Blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        {/* Blob 1 - Indigo / Violet */}
-        <div className="absolute top-[-10%] left-[-5%] w-[500px] h-[500px] rounded-full bg-gradient-to-tr from-indigo-500/30 via-purple-500/20 to-pink-500/30 blur-[120px] animate-liquid-1" />
-        {/* Blob 2 - Cyan / Sky / Blue */}
-        <div className="absolute top-[35%] right-[-10%] w-[600px] h-[600px] rounded-full bg-gradient-to-br from-cyan-400/25 via-blue-500/20 to-indigo-600/30 blur-[140px] animate-liquid-2" />
-        {/* Blob 3 - Emerald / Fuchsia accent */}
-        <div className="absolute bottom-[-10%] left-[25%] w-[550px] h-[550px] rounded-full bg-gradient-to-tr from-fuchsia-500/20 via-purple-600/25 to-indigo-500/20 blur-[130px] animate-liquid-3" />
-      </div>
+      {/* Iris Flower & Ethereal Sky Background (Matching the Reference Image) */}
+      <IrisBackground />
 
-      {/* Top Header */}
+      {/* Top Liquid Glass Header */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -72,72 +67,84 @@ export default function App() {
         toggleTheme={toggleTheme}
       />
 
-      {/* Main Content Area */}
+      {/* Main Content Viewport with Liquid Glass Refraction & Spring Transition */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-        {activeTab === 'merge' && (
-          <MergeTool
-            onProcessingChange={setProcessingState}
-            addToast={addToast}
-          />
-        )}
+        <div
+          key={activeTab}
+          className="liquid-glass-tab-container"
+        >
+          {activeTab === 'dashboard' && (
+            <Dashboard
+              setActiveTab={setActiveTab}
+              addToast={addToast}
+            />
+          )}
 
-        {activeTab === 'split' && (
-          <SplitTool
-            onProcessingChange={setProcessingState}
-            addToast={addToast}
-          />
-        )}
+          {activeTab === 'merge' && (
+            <MergeTool
+              onProcessingChange={setProcessingState}
+              addToast={addToast}
+            />
+          )}
 
-        {activeTab === 'grayscale' && (
-          <GrayscaleTool
-            onProcessingChange={setProcessingState}
-            addToast={addToast}
-          />
-        )}
+          {activeTab === 'split' && (
+            <SplitTool
+              onProcessingChange={setProcessingState}
+              addToast={addToast}
+            />
+          )}
 
-        {activeTab === 'compress' && (
-          <CompressTool
-            onProcessingChange={setProcessingState}
-            addToast={addToast}
-          />
-        )}
+          {activeTab === 'grayscale' && (
+            <GrayscaleTool
+              onProcessingChange={setProcessingState}
+              addToast={addToast}
+            />
+          )}
 
-        {activeTab === 'convert-image' && (
-          <ImageConvertTool
-            onProcessingChange={setProcessingState}
-            addToast={addToast}
-          />
-        )}
+          {activeTab === 'compress' && (
+            <CompressTool
+              onProcessingChange={setProcessingState}
+              addToast={addToast}
+            />
+          )}
 
-        {activeTab === 'img-to-pdf' && (
-          <ImgToPdfTool
-            onProcessingChange={setProcessingState}
-            addToast={addToast}
-          />
-        )}
+          {activeTab === 'convert-image' && (
+            <ImageConvertTool
+              onProcessingChange={setProcessingState}
+              addToast={addToast}
+            />
+          )}
 
-        {activeTab === 'reorder' && (
-          <PageReorderTool
-            onProcessingChange={setProcessingState}
-            addToast={addToast}
-          />
-        )}
+          {activeTab === 'img-to-pdf' && (
+            <ImgToPdfTool
+              onProcessingChange={setProcessingState}
+              addToast={addToast}
+            />
+          )}
+
+          {activeTab === 'reorder' && (
+            <PageReorderTool
+              onProcessingChange={setProcessingState}
+              addToast={addToast}
+            />
+          )}
+        </div>
       </main>
 
-      {/* Glass Footer */}
-      <footer className="glass-nav py-6 relative z-10 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-medium text-slate-600 dark:text-slate-300">
+      {/* Frosted Translucent Glass Footer */}
+      <footer className="water-gloss-nav py-5 relative z-10 transition-colors mt-auto overflow-hidden">
+        <div className="water-surface-meniscus" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-medium text-zinc-700 dark:text-zinc-300 relative z-10">
           
           <div className="flex items-center space-x-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-            <span>100% Client-Side Processing. No files or personal data are ever transmitted to any server.</span>
+            <ShieldCheck className="w-4 h-4 text-zinc-900 dark:text-white shrink-0" />
+            <span>Private by Design. All document data is processed directly inside your browser memory.</span>
           </div>
 
-          <div className="flex items-center space-x-4">
-            <span className="flex items-center space-x-1">
-              <span>Liquid Glass PDF Suite</span>
-              <Sparkles className="w-3.5 h-3.5 text-amber-400 inline ml-1" />
-            </span>
+          <div className="flex items-center space-x-3 text-[11px] text-zinc-600 dark:text-zinc-400">
+            <span>Liquid Glass Edition</span>
+            <span>·</span>
+            <span>Zero Server Uploads</span>
           </div>
 
         </div>

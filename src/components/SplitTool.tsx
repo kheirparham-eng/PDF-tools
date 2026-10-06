@@ -322,18 +322,20 @@ export const SplitTool: React.FC<SplitToolProps> = ({ onProcessingChange, addToa
     <div className="space-y-6">
       
       {/* Intro Banner */}
-      <div className="glass-card rounded-2xl p-6 relative overflow-hidden transition-all">
-        <div className="absolute -top-12 -right-12 w-48 h-48 bg-emerald-500/15 rounded-full blur-2xl pointer-events-none" />
+      <div className="ios-glass rounded-3xl p-6 sm:p-7 relative overflow-hidden transition-all duration-300">
+        <div className="ios-glass-sheen" />
+        <div className="liquid-sheen-sweep" />
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-zinc-400/10 dark:bg-white/[0.03] rounded-full blur-3xl pointer-events-none" />
         <div className="flex items-start space-x-4 relative z-10">
-          <div className="p-3 bg-gradient-to-tr from-emerald-600 to-teal-600 text-white rounded-xl shrink-0 shadow-lg shadow-emerald-500/30 border border-white/30">
-            <Scissors className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-zinc-800 to-black dark:from-zinc-100 dark:to-zinc-300 text-white dark:text-zinc-950 flex items-center justify-center shrink-0 shadow-lg border border-white/20 dark:border-white/40 ring-1 ring-black/5">
+            <Scissors className="w-6 h-6 drop-shadow-sm" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              Page Splitter & Extractor
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-zinc-950 dark:text-white">
+              Split & Extract PDF Pages
             </h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              Select specific pages or enter a custom page range (e.g., "1-3, 5, 8-10") to extract as a new PDF or download each page as an individual file.
+            <p className="mt-1 text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed font-normal">
+              Extract specific ranges, split pages into individual PDFs, rotate orientation, or export custom page bundles with instant visual previews.
             </p>
           </div>
         </div>
@@ -352,17 +354,18 @@ export const SplitTool: React.FC<SplitToolProps> = ({ onProcessingChange, addToa
         <div className="space-y-6">
           
           {/* File Overview Bar */}
-          <div className="glass-card rounded-2xl p-4 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
-                <FileText className="w-6 h-6" />
+          <div className="ios-glass rounded-2xl p-4 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="ios-glass-sheen" />
+            <div className="flex items-center space-x-3.5 min-w-0 relative z-10">
+              <div className="w-10 h-10 rounded-xl ios-pill flex items-center justify-center text-zinc-800 dark:text-zinc-200 shrink-0">
+                <FileText className="w-5 h-5" />
               </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-zinc-950 dark:text-white truncate">
                   {file.name}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {pages.length} total pages • {formatFileSize(file.size)}
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-normal">
+                  <span className="font-mono tabular-nums">{pages.length}</span> total pages · <span className="font-mono tabular-nums">{formatFileSize(file.size)}</span>
                 </p>
               </div>
             </div>
@@ -375,121 +378,149 @@ export const SplitTool: React.FC<SplitToolProps> = ({ onProcessingChange, addToa
                 setFile(null);
                 setPages([]);
               }}
-              className="text-xs font-semibold px-3 py-2 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-all flex items-center space-x-1.5 self-start sm:self-auto cursor-pointer"
+              className="text-xs font-medium px-3 py-1.5 rounded-xl ios-btn-secondary text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white flex items-center space-x-1.5 self-start sm:self-auto cursor-pointer relative z-10"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
               <span>Choose Different PDF</span>
             </button>
           </div>
 
           {/* Selection Toolbar */}
-          <div className="glass-card rounded-2xl p-5 space-y-4">
+          <div className="ios-glass rounded-3xl p-5 sm:p-6 space-y-4 relative overflow-hidden">
+            <div className="ios-glass-sheen" />
+            <div className="liquid-sheen-sweep" />
             
             {/* Quick Selection Helpers */}
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center space-x-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                <Filter className="w-4 h-4 text-indigo-500" />
+              <div className="flex items-center space-x-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                <Filter className="w-3.5 h-3.5 text-zinc-800 dark:text-zinc-200" />
                 <span>Quick Select:</span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   onClick={selectAll}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200"
+                  className="px-3 py-1.5 text-xs font-medium rounded-xl ios-btn-secondary text-slate-700 dark:text-slate-200"
                 >
-                  Select All
+                  All
                 </button>
                 <button
                   onClick={selectOdd}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200"
+                  className="px-3 py-1.5 text-xs font-medium rounded-xl ios-btn-secondary text-slate-700 dark:text-slate-200"
                 >
-                  Odd Pages
+                  Odd
                 </button>
                 <button
                   onClick={selectEven}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200"
+                  className="px-3 py-1.5 text-xs font-medium rounded-xl ios-btn-secondary text-slate-700 dark:text-slate-200"
                 >
-                  Even Pages
+                  Even
                 </button>
                 <button
                   onClick={invertSelection}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200"
+                  className="px-3 py-1.5 text-xs font-medium rounded-xl ios-btn-secondary text-slate-700 dark:text-slate-200"
                 >
                   Invert
                 </button>
                 <button
                   onClick={deselectAll}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200"
+                  className="px-3 py-1.5 text-xs font-medium rounded-xl ios-btn-secondary text-slate-700 dark:text-slate-200"
                 >
-                  Clear Selection
+                  Clear
                 </button>
               </div>
             </div>
 
             {/* Range Input & Export Options */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100 dark:border-slate-700">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3.5 border-t border-black/5 dark:border-white/5">
               
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Page Range Input
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Page Range Specification
                 </label>
                 <input
                   type="text"
                   placeholder='e.g. "1-3, 5, 8-10"'
                   value={rangeInput}
                   onChange={handleRangeInputChange}
-                  className="w-full px-3 py-2 text-sm rounded-xl glass-input text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3.5 py-2 text-xs font-mono rounded-xl ios-input text-slate-900 dark:text-slate-100 focus:outline-none"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Export Mode
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Export Packaging
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="p-1 rounded-2xl ios-segmented-trough grid grid-cols-2 gap-1">
                   <button
                     onClick={() => setExportMode('single-pdf')}
-                    className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 text-xs font-medium rounded-xl transition-all duration-200 cursor-pointer ${
                       exportMode === 'single-pdf'
-                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                        : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                        ? 'ios-segmented-active'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
-                    1 Combined PDF
+                    Combined PDF
                   </button>
                   <button
                     onClick={() => setExportMode('zip-individual')}
-                    className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 text-xs font-medium rounded-xl transition-all duration-200 cursor-pointer ${
                       exportMode === 'zip-individual'
-                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                        : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                        ? 'ios-segmented-active'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
-                    Separate PDFs (ZIP)
+                    Individual (ZIP)
                   </button>
                 </div>
               </div>
 
             </div>
 
+            {/* Redesigned Export Action Bar - Positioned Above PDF Preview */}
+            <div className="pt-4 border-t border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+              <div className="text-xs text-zinc-700 dark:text-zinc-300 font-medium">
+                Ready to export <span className="font-bold text-zinc-950 dark:text-white font-mono">{selectedCount}</span> of {pages.length} selected pages
+              </div>
+
+              <button
+                onClick={handleExtract}
+                disabled={selectedCount === 0}
+                id="extract-pdf-btn-top"
+                className="liquid-export-btn"
+              >
+                {exportMode === 'single-pdf' ? (
+                  <>
+                    <Download className="w-4 h-4" />
+                    <span>Download Extracted PDF ({selectedCount} pages)</span>
+                  </>
+                ) : (
+                  <>
+                    <FileArchive className="w-4 h-4" />
+                    <span>Download Individual PDFs (ZIP)</span>
+                  </>
+                )}
+              </button>
+            </div>
+
           </div>
 
           {/* Page Grid */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+            <div className="flex items-center justify-between px-1">
+              <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Page Previews ({selectedCount} of {pages.length} selected)
               </h4>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
               {pages.map((p) => (
                 <div
                   key={p.pageIndex}
-                  className={`group relative rounded-2xl border bg-white dark:bg-slate-800 p-2.5 transition-all flex flex-col justify-between ${
+                  className={`group relative rounded-2xl p-2.5 transition-all duration-200 flex flex-col justify-between select-none ${
                     p.selected
-                      ? 'border-indigo-600 dark:border-indigo-500 ring-2 ring-indigo-500/30 shadow-md'
-                      : 'border-slate-200 dark:border-slate-700 opacity-60 hover:opacity-100'
+                      ? 'ios-glass border-zinc-400 dark:border-zinc-500 ring-2 ring-black/10 dark:ring-white/20 shadow-lg'
+                      : 'ios-glass-subtle opacity-60 hover:opacity-100'
                   }`}
                 >
                   
@@ -497,31 +528,31 @@ export const SplitTool: React.FC<SplitToolProps> = ({ onProcessingChange, addToa
                   <div className="flex items-center justify-between mb-2">
                     <button
                       onClick={() => togglePageSelection(p.pageIndex)}
-                      className="flex items-center space-x-1.5 focus:outline-none"
+                      className="flex items-center space-x-1.5 focus:outline-none cursor-pointer"
                     >
                       {p.selected ? (
-                        <CheckSquare className="w-5 h-5 text-indigo-600 dark:text-indigo-400 fill-indigo-100 dark:fill-indigo-950" />
+                        <CheckSquare className="w-4 h-4 text-zinc-900 dark:text-zinc-100" />
                       ) : (
-                        <Square className="w-5 h-5 text-slate-400" />
+                        <Square className="w-4 h-4 text-zinc-400" />
                       )}
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <span className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 font-mono tabular-nums">
                         Page {p.pageNumber}
                       </span>
                     </button>
 
                     <button
                       onClick={() => rotatePage(p.pageIndex)}
-                      className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      className="p-1 rounded-lg text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                       title="Rotate 90°"
                     >
-                      <RotateCw className="w-3.5 h-3.5" />
+                      <RotateCw className="w-3 h-3" />
                     </button>
                   </div>
 
                   {/* Page Thumbnail Image */}
                   <div
                     onClick={() => togglePageSelection(p.pageIndex)}
-                    className="relative aspect-[3/4] bg-slate-100 dark:bg-slate-900 rounded-xl overflow-hidden cursor-pointer flex items-center justify-center border border-slate-200 dark:border-slate-700 group-hover:border-indigo-300"
+                    className="relative aspect-[3/4] ios-glass-subtle rounded-xl overflow-hidden cursor-pointer flex items-center justify-center border border-black/5 dark:border-white/10 shadow-inner group-hover:border-zinc-400/40 dark:group-hover:border-white/30 transition-colors"
                   >
                     {p.thumbnailUrl ? (
                       <img
@@ -531,9 +562,9 @@ export const SplitTool: React.FC<SplitToolProps> = ({ onProcessingChange, addToa
                         style={{ transform: `rotate(${p.rotation}deg)` }}
                       />
                     ) : (
-                      <div className="animate-pulse flex flex-col items-center justify-center text-slate-400 text-xs">
-                        <FileText className="w-6 h-6 mb-1" />
-                        <span>Loading...</span>
+                      <div className="animate-pulse flex flex-col items-center justify-center text-zinc-400 text-[11px]">
+                        <FileText className="w-5 h-5 mb-1 opacity-50" />
+                        <span>Loading</span>
                       </div>
                     )}
 
@@ -544,17 +575,17 @@ export const SplitTool: React.FC<SplitToolProps> = ({ onProcessingChange, addToa
                           e.stopPropagation();
                           setPreviewPage({ pageNumber: p.pageNumber, url: p.thumbnailUrl!, rotation: p.rotation });
                         }}
-                        className="absolute bottom-2 right-2 p-1.5 rounded-lg bg-slate-900/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute bottom-2 right-2 p-1.5 rounded-lg bg-black/60 backdrop-blur-md text-white opacity-0 group-hover:opacity-100 transition-opacity"
                         title="Zoom Preview"
                       >
-                        <ZoomIn className="w-4 h-4" />
+                        <ZoomIn className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
 
                   {/* Rotation Indicator if rotated */}
                   {p.rotation !== 0 && (
-                    <div className="mt-2 text-center text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
+                    <div className="mt-1.5 text-center text-[10px] font-semibold text-zinc-900 dark:text-zinc-100 font-mono">
                       Rotated {p.rotation}°
                     </div>
                   )}
@@ -565,16 +596,18 @@ export const SplitTool: React.FC<SplitToolProps> = ({ onProcessingChange, addToa
           </div>
 
           {/* Bottom Action Bar */}
-          <div className="sticky bottom-6 z-20 glass-card rounded-2xl p-4 shadow-2xl flex items-center justify-between">
-            <div className="text-xs text-slate-700 dark:text-slate-300 font-semibold">
-              Ready to export <span className="font-extrabold text-indigo-600 dark:text-indigo-400">{selectedCount}</span> pages
+          <div className="sticky bottom-6 z-20 ios-glass rounded-2xl p-4 shadow-2xl flex items-center justify-between border border-white/30 dark:border-white/15 relative overflow-hidden">
+            <div className="ios-glass-sheen" />
+            <div className="liquid-sheen-sweep" />
+            <div className="text-xs text-zinc-700 dark:text-zinc-300 font-medium relative z-10">
+              Ready to export <span className="font-bold text-zinc-950 dark:text-white font-mono">{selectedCount}</span> pages
             </div>
 
             <button
               onClick={handleExtract}
               disabled={selectedCount === 0}
               id="extract-pdf-btn"
-              className="px-6 py-3 rounded-xl glass-btn-primary disabled:opacity-40 text-white font-bold text-sm flex items-center space-x-2 cursor-pointer"
+              className="liquid-export-btn"
             >
               {exportMode === 'single-pdf' ? (
                 <>

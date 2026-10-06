@@ -184,18 +184,20 @@ export const MergeTool: React.FC<MergeToolProps> = ({ onProcessingChange, addToa
     <div className="space-y-6">
       
       {/* Intro Banner */}
-      <div className="glass-card rounded-2xl p-6 relative overflow-hidden transition-all">
-        <div className="absolute -top-12 -right-12 w-48 h-48 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
+      <div className="ios-glass rounded-3xl p-6 sm:p-7 relative overflow-hidden transition-all duration-300">
+        <div className="ios-glass-sheen" />
+        <div className="liquid-sheen-sweep" />
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-zinc-400/10 dark:bg-white/[0.03] rounded-full blur-3xl pointer-events-none" />
         <div className="flex items-start space-x-4 relative z-10">
-          <div className="p-3 bg-gradient-to-tr from-indigo-600 to-purple-600 text-white rounded-xl shrink-0 shadow-lg shadow-indigo-500/30 border border-white/30">
-            <Layers className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-zinc-800 to-black dark:from-zinc-100 dark:to-zinc-300 text-white dark:text-zinc-950 flex items-center justify-center shrink-0 shadow-lg border border-white/20 dark:border-white/40 ring-1 ring-black/5">
+            <Layers className="w-6 h-6 drop-shadow-sm" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              PDF Merger
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-zinc-950 dark:text-white">
+              Merge PDF Documents
             </h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              Combine multiple PDF documents into a single organized file. Drag to reorder, select specific page ranges, or rotate orientation before merging.
+            <p className="mt-1 text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed font-normal">
+              Combine multiple PDF documents into a single unified file. Drag files to reorder, configure specific page ranges, or rotate orientation before merging.
             </p>
           </div>
         </div>
@@ -206,27 +208,60 @@ export const MergeTool: React.FC<MergeToolProps> = ({ onProcessingChange, addToa
         onFilesSelected={handleFilesSelected}
         acceptTypes=".pdf"
         multiple={true}
-        title="Drop your PDF files here to merge"
-        description="Select multiple PDF files from your device or drag them in"
+        title="Drop PDF files to merge"
+        description="Select multiple documents from your device or drag them here"
         id="merge-dropzone"
       />
 
       {/* PDF List Section */}
       {files.length > 0 && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+
+          {/* Export Settings & Merge Action - Positioned Above PDF Queue/Preview */}
+          <div className="ios-glass rounded-3xl p-5 sm:p-6 space-y-4 relative overflow-hidden">
+            <div className="ios-glass-sheen" />
+            <div className="liquid-sheen-sweep" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+              
+              <div className="space-y-1.5 max-w-xs w-full">
+                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  Target Filename
+                </label>
+                <input
+                  type="text"
+                  value={outputFilename}
+                  onChange={(e) => setOutputFilename(e.target.value)}
+                  className="w-full px-3.5 py-2 text-sm rounded-xl ios-input text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center space-x-3 self-end sm:self-auto">
+                <button
+                  onClick={handleMerge}
+                  id="merge-pdf-btn"
+                  className="liquid-export-btn shadow-md"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Merge {files.length} PDFs ({totalPages} pages)</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between px-1">
             <div className="flex items-center space-x-3">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Merge Order ({files.length} {files.length === 1 ? 'file' : 'files'})
+              <h3 className="text-sm font-semibold text-zinc-950 dark:text-white">
+                Queue ({files.length} {files.length === 1 ? 'file' : 'files'})
               </h3>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
-                Total: {totalPages} pages ({formatFileSize(totalSize)})
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium ios-pill text-zinc-800 dark:text-zinc-200">
+                {totalPages} pages · {formatFileSize(totalSize)}
               </span>
             </div>
 
             <button
               onClick={() => setFiles([])}
-              className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline flex items-center space-x-1"
+              className="text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center space-x-1 cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Clear All</span>
@@ -234,7 +269,7 @@ export const MergeTool: React.FC<MergeToolProps> = ({ onProcessingChange, addToa
           </div>
 
           {/* List of Files */}
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {files.map((fileItem, index) => (
               <div
                 key={fileItem.id}
@@ -242,25 +277,25 @@ export const MergeTool: React.FC<MergeToolProps> = ({ onProcessingChange, addToa
                 onDragStart={() => handleDragStart(index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragEnd={handleDragEnd}
-                className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl transition-all ${
+                className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl transition-all duration-200 ${
                   draggedIndex === index
-                    ? 'border-indigo-500 ring-2 ring-indigo-500/30 shadow-xl bg-indigo-500/10'
-                    : 'glass-card hover:border-slate-400 dark:hover:border-slate-500'
+                    ? 'border-zinc-400 dark:border-zinc-600 ring-4 ring-black/10 dark:ring-white/20 shadow-2xl bg-zinc-200/50 dark:bg-white/10 scale-[1.01]'
+                    : 'ios-glass hover:scale-[1.004] hover:shadow-xl'
                 }`}
               >
                 
                 {/* File Thumbnail & Name */}
-                <div className="flex items-center space-x-4">
-                  <span className="text-xs font-bold text-slate-400 w-5 text-center shrink-0">
-                    #{index + 1}
+                <div className="flex items-center space-x-3.5 min-w-0">
+                  <span className="text-xs font-mono tabular-nums text-slate-400 dark:text-slate-500 w-5 text-center shrink-0">
+                    {index + 1}
                   </span>
 
-                  <div className="w-12 h-16 rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0 flex items-center justify-center">
+                  <div className="w-12 h-16 rounded-xl ios-glass-subtle overflow-hidden shrink-0 flex items-center justify-center shadow-inner">
                     {fileItem.thumbnailUrl ? (
                       <img
                         src={fileItem.thumbnailUrl}
                         alt="Thumbnail"
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform duration-200"
                         style={{ transform: `rotate(${fileItem.rotation || 0}deg)` }}
                       />
                     ) : (
@@ -272,15 +307,15 @@ export const MergeTool: React.FC<MergeToolProps> = ({ onProcessingChange, addToa
                     <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate max-w-xs sm:max-w-md">
                       {fileItem.name}
                     </p>
-                    <div className="flex items-center space-x-2 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                      <span>{fileItem.pageCount} pages</span>
-                      <span>•</span>
-                      <span>{formatFileSize(fileItem.size)}</span>
+                    <div className="flex items-center space-x-2 mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-normal">
+                      <span className="font-mono tabular-nums">{fileItem.pageCount} pages</span>
+                      <span>·</span>
+                      <span className="font-mono tabular-nums">{formatFileSize(fileItem.size)}</span>
                       {fileItem.rotation ? (
                         <>
-                          <span>•</span>
-                          <span className="text-indigo-600 dark:text-indigo-400 font-medium">
-                            Rotated {fileItem.rotation}°
+                          <span>·</span>
+                          <span className="text-zinc-900 dark:text-zinc-100 font-semibold font-mono">
+                            {fileItem.rotation}°
                           </span>
                         </>
                       ) : null}
@@ -289,90 +324,60 @@ export const MergeTool: React.FC<MergeToolProps> = ({ onProcessingChange, addToa
                 </div>
 
                 {/* Optional Page Range & Controls */}
-                <div className="flex items-center space-x-2 mt-3 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-700">
+                <div className="flex items-center space-x-2 mt-3 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-black/5 dark:border-white/5">
                   
                   {/* Page Range Input */}
                   <div className="flex items-center space-x-1.5" title="Extract specific pages from this file e.g. 1-3, 5">
-                    <span className="text-xs text-slate-400 font-medium hidden md:inline">Pages:</span>
+                    <span className="text-xs text-slate-400 font-normal hidden md:inline">Pages:</span>
                     <input
                       type="text"
                       placeholder={`1-${fileItem.pageCount}`}
                       value={fileItem.pageRange || ''}
                       onChange={(e) => updatePageRange(fileItem.id, e.target.value)}
-                      className="w-24 px-2 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="w-24 px-2.5 py-1 text-xs rounded-xl ios-input font-mono text-slate-800 dark:text-slate-200 focus:outline-none"
                     />
                   </div>
 
                   {/* Rotate Button */}
                   <button
                     onClick={() => rotateFile(fileItem.id)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                    className="p-2 rounded-xl ios-btn-secondary text-slate-600 dark:text-slate-300"
                     title="Rotate all pages in this file"
                   >
-                    <RotateCw className="w-4 h-4" />
+                    <RotateCw className="w-3.5 h-3.5" />
                   </button>
 
                   {/* Reorder Buttons */}
                   <button
                     onClick={() => moveFile(index, 'up')}
                     disabled={index === 0}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                    className="p-2 rounded-xl ios-btn-secondary text-slate-600 dark:text-slate-300 disabled:opacity-25 disabled:pointer-events-none"
                     title="Move Up"
                   >
-                    <ArrowUp className="w-4 h-4" />
+                    <ArrowUp className="w-3.5 h-3.5" />
                   </button>
 
                   <button
                     onClick={() => moveFile(index, 'down')}
                     disabled={index === files.length - 1}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                    className="p-2 rounded-xl ios-btn-secondary text-slate-600 dark:text-slate-300 disabled:opacity-25 disabled:pointer-events-none"
                     title="Move Down"
                   >
-                    <ArrowDown className="w-4 h-4" />
+                    <ArrowDown className="w-3.5 h-3.5" />
                   </button>
 
                   {/* Delete Button */}
                   <button
                     onClick={() => removeFile(fileItem.id)}
-                    className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
+                    className="p-2 rounded-xl ios-btn-secondary text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                     title="Remove file"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
               </div>
             ))}
-          </div>
-
-          {/* Export Settings & Merge Action */}
-          <div className="glass-card rounded-2xl p-6 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              
-              <div className="space-y-1 max-w-xs">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Output Filename
-                </label>
-                <input
-                  type="text"
-                  value={outputFilename}
-                  onChange={(e) => setOutputFilename(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl glass-input text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={handleMerge}
-                  id="merge-pdf-btn"
-                  className="w-full sm:w-auto px-6 py-3 rounded-xl glass-btn-primary text-white font-bold text-sm flex items-center justify-center space-x-2 cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Merge {files.length} PDFs ({totalPages} pages)</span>
-                </button>
-              </div>
-
-            </div>
           </div>
 
         </div>
